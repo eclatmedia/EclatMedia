@@ -69,20 +69,38 @@ function initializeDirectUploadForm() {
     categorySelect.disabled = true;
 
     try {
-      const { upload } = await import('/node_modules/@vercel/blob/dist/client.js');
-
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
+        const pathname = createUploadPathname(file, index);
         setStatus(`Uploading ${index + 1} of ${files.length}: ${file.name}`);
 
-        const uploadedBlob = await upload(createUploadPathname(file, index), file, {
-          access: 'public',
-          handleUploadUrl: '/api/admin/portfolio/upload-token',
+        const presignResponse = await fetch('/api/admin/portfolio/upload-url', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'x-csrf-token': csrfToken
           },
-          multipart: file.size > 4 * 1024 * 1024
+          body: JSON.stringify({
+            pathname,
+            contentType: file.type
+          })
         });
+        const presignPayload = await readJsonResponse(presignResponse);
+        if (!presignResponse.ok || !presignPayload.presignedUrl) {
+          throw new Error(presignPayload.error || 'Unable to start upload.');
+        }
+
+        const uploadResponse = await fetch(presignPayload.presignedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream'
+          },
+          body: file
+        });
+        const uploadedBlob = await readJsonResponse(uploadResponse);
+        if (!uploadResponse.ok || !uploadedBlob.url || !uploadedBlob.pathname) {
+          throw new Error(uploadedBlob.error || 'Unable to upload image.');
+        }
 
         const response = await fetch('/api/admin/portfolio/register', {
           method: 'POST',

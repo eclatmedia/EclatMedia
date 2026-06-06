@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const multer = require('multer');
 const serveStatic = require('serve-static');
-const { handleUpload } = require('@vercel/blob/client');
+const { issueSignedToken, presignUrl } = require('@vercel/blob');
 const {
   authMiddleware,
   clearAdminSession,
@@ -260,7 +260,7 @@ app.post('/api/enquiries', async (req, res) => {
   res.status(201).json({ success: true });
 });
 
-app.post('/api/admin/portfolio/upload-token', async (req, res) => {
+app.post('/api/admin/portfolio/upload-url', async (req, res) => {
   if (!req.auth.isAdmin) {
     return res.status(403).json({ error: 'Admin sign-in required.' });
   }
@@ -274,26 +274,28 @@ app.post('/api/admin/portfolio/upload-token', async (req, res) => {
   }
 
   try {
-    const payload = await handleUpload({
-      request: req,
-      body: req.body,
-      onBeforeGenerateToken: async (pathname) => {
-        if (!isValidImagePathname(pathname)) {
-          throw new Error('Invalid upload path.');
-        }
+    const pathname = sanitizeStoragePath(req.body.pathname);
+    const contentType = normalizeContentType(req.body.contentType);
+    if (!isValidImagePathname(pathname)) {
+      return res.status(400).json({ error: 'Invalid upload path.' });
+    }
 
-        return {
-          allowedContentTypes: ['image/*'],
-          maximumSizeInBytes: 50 * 1024 * 1024,
-          addRandomSuffix: false,
-          allowOverwrite: false
-        };
-      }
+    const signedToken = await issueSignedToken({
+      pathname,
+      operations: ['put']
     });
 
-    res.json(payload);
+    const { presignedUrl } = await presignUrl(signedToken, {
+      operation: 'put',
+      pathname,
+      access: 'public',
+      contentType,
+      maximumSizeInBytes: 50 * 1024 * 1024
+    });
+
+    res.json({ presignedUrl });
   } catch (error) {
-    res.status(400).json({ error: error.message || 'Unable to start upload.' });
+    res.status(400).json({ error: error.message || 'Unable to prepare upload.' });
   }
 });
 
@@ -927,6 +929,15 @@ function normalizeUploadedBlob(value) {
   const source = value && typeof value === 'object' ? value : null;
   if (!source) {
     return null;
+  }
+
+  function normalizeContentType(value) {
+    if (typeof value !== 'string') {
+      return 'application/octet-stream';
+    }
+
+    const trimmed = value.trim().toLowerCase();
+    return /^image\/[a-z0-9.+-]+$/.test(trimmed) ? trimmed : 'application/octet-stream';
   }
 
   const pathname = sanitizeStoragePath(source.pathname);

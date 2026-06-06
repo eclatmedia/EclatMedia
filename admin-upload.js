@@ -925,19 +925,19 @@ function isValidImagePathname(value) {
   return typeof value === 'string' && /^images\/[a-zA-Z0-9._-]+$/.test(value);
 }
 
+function normalizeContentType(value) {
+  if (typeof value !== 'string') {
+    return 'application/octet-stream';
+  }
+
+  const trimmed = value.trim().toLowerCase();
+  return /^image\/[a-z0-9.+-]+$/.test(trimmed) ? trimmed : 'application/octet-stream';
+}
+
 function normalizeUploadedBlob(value) {
   const source = value && typeof value === 'object' ? value : null;
   if (!source) {
     return null;
-  }
-
-  function normalizeContentType(value) {
-    if (typeof value !== 'string') {
-      return 'application/octet-stream';
-    }
-
-    const trimmed = value.trim().toLowerCase();
-    return /^image\/[a-z0-9.+-]+$/.test(trimmed) ? trimmed : 'application/octet-stream';
   }
 
   const pathname = sanitizeStoragePath(source.pathname);

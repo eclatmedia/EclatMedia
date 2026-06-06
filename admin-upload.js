@@ -538,9 +538,13 @@ app.use((error, req, res, next) => {
   next(error);
 });
 
-app.listen(PORT, () => {
-  console.log(`Éclat Media running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Éclat Media running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
 
 function requireAdmin(req, res, next) {
   if (req.session && req.session.isAdmin) {

@@ -89,6 +89,33 @@ async function removeStoredImage(image) {
   }
 }
 
+async function readStoredImage(image) {
+  if (!image || typeof image !== 'object') {
+    return null;
+  }
+
+  if (BLOB_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
+    const blob = await readBlobImage(image.storagePath);
+    if (blob && blob.statusCode === 200 && blob.stream) {
+      return {
+        kind: 'blob',
+        stream: blob.stream,
+        contentType: blob.blob.contentType || 'application/octet-stream',
+        cacheControl: blob.blob.cacheControl || 'public, max-age=3600'
+      };
+    }
+  }
+
+  if (typeof image.filename === 'string' && localImageExists(image.filename)) {
+    return {
+      kind: 'local',
+      filePath: path.join(IMAGES_DIR, path.basename(image.filename))
+    };
+  }
+
+  return null;
+}
+
 function localImageExists(filename) {
   if (typeof filename !== 'string' || !filename) {
     return false;
@@ -157,6 +184,39 @@ async function readBlobJson(blobPath) {
   }
 }
 
+async function readBlobImage(blobPath) {
+  if (!BLOB_ENABLED) {
+    return null;
+  }
+
+  try {
+    const publicBlob = await get(blobPath, {
+      access: 'public'
+    });
+    if (publicBlob) {
+      return publicBlob;
+    }
+  } catch (error) {
+    if (error && error.name !== 'BlobNotFoundError') {
+      console.error(`Failed to read public blob ${blobPath}:`, error);
+    }
+  }
+
+  try {
+    const privateBlob = await get(blobPath, {
+      access: 'private',
+      useCache: false
+    });
+    return privateBlob || null;
+  } catch (error) {
+    if (error && error.name !== 'BlobNotFoundError') {
+      console.error(`Failed to read private blob ${blobPath}:`, error);
+    }
+
+    return null;
+  }
+}
+
 function readLocalJsonArray(filePath, fallback) {
   if (!fs.existsSync(filePath)) {
     return fallback;
@@ -206,6 +266,7 @@ module.exports = {
   loadMetadata,
   loadSiteContent,
   localImageExists,
+  readStoredImage,
   removeStoredImage,
   saveEnquiries,
   saveMetadata,

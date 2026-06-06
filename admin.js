@@ -93,7 +93,9 @@ function initializeDirectUploadForm() {
         const uploadResponse = await fetch(presignPayload.presignedUrl, {
           method: 'PUT',
           headers: {
-            'Content-Type': file.type || 'application/octet-stream'
+            'Content-Type': file.type || 'application/octet-stream',
+            'x-content-type': file.type || 'application/octet-stream',
+            'x-vercel-blob-access': 'public'
           },
           body: file
         });

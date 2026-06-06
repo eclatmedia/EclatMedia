@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const path = require('path');
+const { Readable } = require('stream');
 const multer = require('multer');
 const serveStatic = require('serve-static');
 const { issueSignedToken, presignUrl } = require('@vercel/blob');
@@ -16,6 +17,7 @@ const {
   loadMetadata: loadStoredMetadata,
   loadSiteContent: loadStoredSiteContent,
   localImageExists,
+  readStoredImage,
   removeStoredImage,
   saveEnquiries: saveStoredEnquiries,
   saveMetadata: saveStoredMetadata,
@@ -332,6 +334,35 @@ app.post('/api/admin/portfolio/register', requireAdmin, verifyCsrf, async (req, 
   await saveMetadata(images);
 
   res.json({ success: true });
+});
+
+app.get('/images/:filename', async (req, res, next) => {
+  try {
+    const filename = path.basename(typeof req.params.filename === 'string' ? req.params.filename : '');
+    if (!filename) {
+      return res.status(404).end();
+    }
+
+    const image = (await loadMetadata()).find((entry) => entry.filename === filename);
+    if (!image) {
+      return res.status(404).end();
+    }
+
+    const storedImage = await readStoredImage(image);
+    if (!storedImage) {
+      return res.status(404).end();
+    }
+
+    if (storedImage.kind === 'local') {
+      return res.sendFile(storedImage.filePath);
+    }
+
+    res.setHeader('Content-Type', storedImage.contentType);
+    res.setHeader('Cache-Control', storedImage.cacheControl);
+    Readable.fromWeb(storedImage.stream).pipe(res);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/gallery', async (req, res) => {
@@ -1051,15 +1082,15 @@ function resolveImageUrl(image) {
     return '';
   }
 
+  if (image.filename && (image.storagePath || localImageExists(image.filename))) {
+    return `/images/${encodeURIComponent(image.filename)}`;
+  }
+
   if (image.imageUrl) {
     return image.imageUrl;
   }
 
-  if (!image.filename) {
-    return '';
-  }
-
-  return `/images/${encodeURIComponent(image.filename)}`;
+  return '';
 }
 
 function isValidEmail(value) {

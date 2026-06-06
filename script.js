@@ -290,10 +290,11 @@ function renderPortfolio(portfolio) {
       media.setAttribute('tabindex', '0');
       const image = document.createElement('img');
       image.className = 'pimg';
-      image.src = item.imageUrl;
+      image.src = getPrimaryImageUrl(item);
       image.alt = item.title ? `${item.title} — ${item.category || 'Portfolio image'}` : 'Portfolio image';
       image.loading = 'lazy';
       image.decoding = 'async';
+      applyImageFallback(image, item);
 
       const overlay = createElement('div', 'portfolio-overlay');
       const overlayText = createElement('div', 'portfolio-overlay-text');
@@ -387,12 +388,13 @@ function renderHeroMosaic(portfolio) {
 
         const image = document.createElement('img');
         image.className = 'mosaic-photo';
-        image.src = item.imageUrl;
+        image.src = getPrimaryImageUrl(item);
         image.alt = item.title
           ? `${item.title} — ${item.category || 'Featured image'}`
           : 'Featured image';
         image.loading = index === 0 ? 'eager' : 'lazy';
         image.decoding = 'async';
+        applyImageFallback(image, item);
 
         const button = createViewerButton(item, 'mosaic-view-button');
         button.textContent = 'View';
@@ -701,20 +703,48 @@ function createViewerButton(item, className) {
 }
 
 function applyViewerData(element, item, ariaLabel) {
-  if (!item || typeof item.imageUrl !== 'string' || !item.imageUrl) {
+  const primaryImageUrl = getPrimaryImageUrl(item);
+  if (!primaryImageUrl) {
     element.removeAttribute('data-viewer-trigger');
     element.removeAttribute('data-viewer-src');
+    element.removeAttribute('data-viewer-fallback-src');
     element.removeAttribute('data-viewer-title');
     element.removeAttribute('data-viewer-category');
     return false;
   }
 
   element.dataset.viewerTrigger = 'true';
-  element.dataset.viewerSrc = item.imageUrl;
+  element.dataset.viewerSrc = primaryImageUrl;
+  element.dataset.viewerFallbackSrc = getFallbackImageUrl(item);
   element.dataset.viewerTitle = item.title || 'Untitled Project';
   element.dataset.viewerCategory = item.category || 'Featured Work';
   element.setAttribute('aria-label', ariaLabel);
   return true;
+}
+
+function applyImageFallback(image, item) {
+  const fallbackImageUrl = getFallbackImageUrl(item);
+  if (!fallbackImageUrl || fallbackImageUrl === getPrimaryImageUrl(item)) {
+    return;
+  }
+
+  image.addEventListener(
+    'error',
+    () => {
+      if (image.src !== fallbackImageUrl) {
+        image.src = fallbackImageUrl;
+      }
+    },
+    { once: true }
+  );
+}
+
+function getPrimaryImageUrl(item) {
+  return item && typeof item.imageUrl === 'string' ? item.imageUrl : '';
+}
+
+function getFallbackImageUrl(item) {
+  return item && typeof item.fallbackImageUrl === 'string' ? item.fallbackImageUrl : '';
 }
 
 function createInitials(value) {

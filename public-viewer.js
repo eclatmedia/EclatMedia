@@ -28,6 +28,7 @@ function initializePublicViewer() {
     lastTrigger = trigger;
     openViewer({
       src: trigger.dataset.viewerSrc,
+      fallbackSrc: trigger.dataset.viewerFallbackSrc || '',
       title: trigger.dataset.viewerTitle || 'Selected image',
       category: trigger.dataset.viewerCategory || 'Portfolio',
       image,
@@ -60,6 +61,7 @@ function initializePublicViewer() {
       lastTrigger = trigger;
       openViewer({
         src: trigger.dataset.viewerSrc,
+        fallbackSrc: trigger.dataset.viewerFallbackSrc || '',
         title: trigger.dataset.viewerTitle || 'Selected image',
         category: trigger.dataset.viewerCategory || 'Portfolio',
         image,
@@ -90,6 +92,7 @@ function initializePublicViewer() {
 
 function openViewer({
   src,
+  fallbackSrc,
   title,
   category,
   image,
@@ -103,6 +106,15 @@ function openViewer({
     return;
   }
 
+  image.onerror = null;
+  if (fallbackSrc && fallbackSrc !== src) {
+    image.onerror = () => {
+      if (image.src !== fallbackSrc) {
+        image.onerror = null;
+        image.src = fallbackSrc;
+      }
+    };
+  }
   image.src = src;
   image.alt = `${title} — enlarged view`;
   categoryNode.textContent = category;
@@ -120,6 +132,7 @@ function closeViewer(viewer, lastTrigger) {
 
   const image = viewer.querySelector('[data-viewer-image]');
   if (image) {
+    image.onerror = null;
     image.removeAttribute('src');
   }
 

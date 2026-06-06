@@ -231,6 +231,7 @@ app.get('/api/site-content', async (req, res) => {
   const portfolio = (await loadMetadata()).map((image, index) => ({
     id: image.id,
     imageUrl: resolveImageUrl(image),
+    fallbackImageUrl: resolveFallbackImageUrl(image),
     title: image.title || createPortfolioTitle(image.originalname),
     category: image.category,
     order: index + 1
@@ -1082,15 +1083,34 @@ function resolveImageUrl(image) {
     return '';
   }
 
-  if (image.filename && (image.storagePath || localImageExists(image.filename))) {
-    return `/images/${encodeURIComponent(image.filename)}`;
-  }
-
   if (image.imageUrl) {
     return image.imageUrl;
   }
 
+  return resolveFallbackImageUrl(image);
+}
+
+function resolveFallbackImageUrl(image) {
+  if (!image || typeof image !== 'object') {
+    return '';
+  }
+
+  if (image.filename && (image.storagePath || localImageExists(image.filename))) {
+    return `/images/${encodeURIComponent(image.filename)}`;
+  }
+
   return '';
+}
+
+function renderImageFallbackAttributes(image) {
+  const fallbackSrc = resolveFallbackImageUrl(image);
+  if (!fallbackSrc || fallbackSrc === resolveImageUrl(image)) {
+    return '';
+  }
+
+  return `data-fallback-src="${escapeHtml(
+    fallbackSrc
+  )}" onerror="if(this.dataset.fallbackSrc&&this.src!==this.dataset.fallbackSrc){this.src=this.dataset.fallbackSrc;return;}this.onerror=null;"`;
 }
 
 function isValidEmail(value) {
@@ -1214,6 +1234,7 @@ function renderGalleryPage(images, selectedCategory) {
                       class="gallery-card-media"
                       ${renderViewerDataAttributes(
                         resolveImageUrl(image),
+                        resolveFallbackImageUrl(image),
                         image.title,
                         image.category,
                         `View ${image.title} in full size`
@@ -1221,7 +1242,9 @@ function renderGalleryPage(images, selectedCategory) {
                       role="button"
                       tabindex="0"
                     >
-                      <img src="${escapeHtml(resolveImageUrl(image))}" alt="${escapeHtml(
+                      <img src="${escapeHtml(resolveImageUrl(image))}" ${renderImageFallbackAttributes(
+                        image
+                      )} alt="${escapeHtml(
                         `${image.title} — ${image.category}`
                       )}" loading="lazy" decoding="async">
                     </div>
@@ -1236,6 +1259,7 @@ function renderGalleryPage(images, selectedCategory) {
                         type="button"
                         data-viewer-trigger="true"
                         data-viewer-src="${escapeHtml(resolveImageUrl(image))}"
+                        data-viewer-fallback-src="${escapeHtml(resolveFallbackImageUrl(image))}"
                         data-viewer-title="${escapeHtml(image.title)}"
                         data-viewer-category="${escapeHtml(image.category)}"
                         aria-label="View ${escapeHtml(image.title)} in full size"
@@ -1886,7 +1910,9 @@ function renderTeamMediaPreview(item) {
 function renderPortfolioCard(image, csrfToken) {
   return `
     <article class="portfolio-admin-card">
-      <img src="${escapeHtml(resolveImageUrl(image))}" alt="${escapeHtml(image.title)}">
+      <img src="${escapeHtml(resolveImageUrl(image))}" ${renderImageFallbackAttributes(
+        image
+      )} alt="${escapeHtml(image.title)}">
       <div class="portfolio-admin-copy">
         <div class="portfolio-admin-title">
           <strong>${escapeHtml(image.title)}</strong>
@@ -1986,9 +2012,11 @@ function renderCsrfInput(csrfToken) {
   return `<input type="hidden" name="csrfToken" value="${escapeHtml(csrfToken)}">`;
 }
 
-function renderViewerDataAttributes(src, title, category, ariaLabel) {
+function renderViewerDataAttributes(src, fallbackSrc, title, category, ariaLabel) {
   return `data-viewer-trigger="true" data-viewer-src="${escapeHtml(
     src
+  )}" data-viewer-fallback-src="${escapeHtml(
+    fallbackSrc || ''
   )}" data-viewer-title="${escapeHtml(title)}" data-viewer-category="${escapeHtml(
     category
   )}" aria-label="${escapeHtml(ariaLabel)}"`;

@@ -4,8 +4,13 @@ const SESSION_COOKIE = 'eclat_admin_session';
 const CSRF_COOKIE = 'eclat_admin_csrf';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const CSRF_TTL_SECONDS = 60 * 60 * 12;
-const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SESSION_SECRET || 'change-this-session-secret';
+const DEFAULT_AUTH_SECRET = 'change-this-session-secret';
+const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SESSION_SECRET || DEFAULT_AUTH_SECRET;
 const SECURE_COOKIES = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
+if (SECURE_COOKIES && AUTH_SECRET === DEFAULT_AUTH_SECRET) {
+  throw new Error('AUTH_SECRET or SESSION_SECRET must be set in production.');
+}
 
 function authMiddleware(req, res, next) {
   const cookies = parseCookies(req.headers.cookie || '');

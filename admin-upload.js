@@ -33,9 +33,14 @@ const ROOT_DIR = __dirname;
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const IS_VERCEL = process.env.VERCEL === '1';
+const IS_PRODUCTION_RUNTIME = process.env.NODE_ENV === 'production' || IS_VERCEL;
 const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
+
+if (IS_PRODUCTION_RUNTIME && ADMIN_USER === 'admin' && ADMIN_PASSWORD === 'password') {
+  throw new Error('ADMIN_USER and ADMIN_PASSWORD must be set in production.');
+}
 
 const defaultSiteContent = {
   settings: {
@@ -387,7 +392,7 @@ app.post('/admin/login', verifyCsrf, (req, res) => {
   const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
   const password = typeof req.body.password === 'string' ? req.body.password : '';
 
-  if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
+  if (timingSafeCredentialMatch(username, ADMIN_USER) && timingSafeCredentialMatch(password, ADMIN_PASSWORD)) {
     startAdminSession(res);
     return res.redirect('/admin');
   }
@@ -529,23 +534,40 @@ app.post(
 
     const images = await loadMetadata();
     const startingOrder = images.length;
-    const storedFiles = await Promise.all(uploadedFiles.map((file) => storeUploadedImage(file)));
+    const storedFiles = [];
 
-    storedFiles.forEach((file, index) => {
-      const originalname = uploadedFiles[index].originalname;
-      images.push({
-        id: createId('asset'),
-        filename: file.filename,
-        imageUrl: file.imageUrl,
-        storagePath: file.storagePath,
-        originalname,
-        title: createPortfolioTitle(originalname),
-        category,
-        order: startingOrder + index + 1,
-        createdAt: new Date().toISOString()
+    try {
+      for (const file of uploadedFiles) {
+        storedFiles.push(await storeUploadedImage(file));
+      }
+
+      storedFiles.forEach((file, index) => {
+        const originalname = uploadedFiles[index].originalname;
+        images.push({
+          id: createId('asset'),
+          filename: file.filename,
+          imageUrl: file.imageUrl,
+          storagePath: file.storagePath,
+          originalname,
+          title: createPortfolioTitle(originalname),
+          category,
+          order: startingOrder + index + 1,
+          createdAt: new Date().toISOString()
+        });
       });
-    });
-    await saveMetadata(images);
+      await saveMetadata(images);
+    } catch (error) {
+      for (const file of storedFiles) {
+        await removeStoredImage(file);
+      }
+
+      return redirectToAdmin(
+        res,
+        error && error.message ? error.message : 'Unable to upload the selected images.',
+        'error',
+        'portfolio'
+      );
+    }
 
     const uploadLabel =
       uploadedFiles.length === 1
@@ -645,6 +667,16 @@ function requireAdmin(req, res, next) {
   }
 
   res.redirect('/admin/login');
+}
+
+function timingSafeCredentialMatch(actual, expected) {
+  if (typeof actual !== 'string' || typeof expected !== 'string') {
+    return false;
+  }
+
+  const actualDigest = crypto.createHash('sha256').update(`credential:${actual}`).digest();
+  const expectedDigest = crypto.createHash('sha256').update(`credential:${expected}`).digest();
+  return crypto.timingSafeEqual(actualDigest, expectedDigest);
 }
 
 function verifyCsrf(req, res, next) {

@@ -690,16 +690,16 @@ function createViewerButton(item, className) {
   if (!applyViewerData(button, item, `View ${item.title || 'image'} in full size`)) {
     button.disabled = true;
   }
-
-  function createTeamPhotoPlaceholder(member) {
-    return createElement(
-      'div',
-      'team-photo-placeholder',
-      createInitials(member?.name || member?.role)
-    );
-  }
   button.textContent = 'View image';
   return button;
+}
+
+function createTeamPhotoPlaceholder(member) {
+  return createElement(
+    'div',
+    'team-photo-placeholder',
+    createInitials(member?.name || member?.role)
+  );
 }
 
 function applyViewerData(element, item, ariaLabel) {

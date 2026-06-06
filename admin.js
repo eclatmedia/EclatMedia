@@ -104,7 +104,7 @@ function initializeDirectUploadForm() {
           throw new Error('Unable to upload image to storage.');
         }
 
-        // Extract blob metadata from response headers and body
+        // Extract blob metadata from response
         const uploadedBlob = await extractBlobMetadata(uploadResponse, pathname);
         if (!uploadedBlob.url || !uploadedBlob.pathname) {
           throw new Error('Unable to retrieve uploaded image details.');
@@ -152,12 +152,15 @@ function initializeDirectUploadForm() {
 }
 
 function createUploadPathname(file, index) {
-  const safeName = String(file?.name || 'upload')
+  // Extract just the filename without path
+  const filename = String(file?.name || 'upload')
     .split('/')
     .pop()
     .split('\\')
-    .pop()
-    .replace(/[^a-zA-Z0-9._-]+/g, '-');
+    .pop();
+  
+  // Sanitize the filename but preserve the original extension
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, '-');
 
   return `images/${Date.now()}-${index}-${safeName || 'upload'}`;
 }
@@ -177,13 +180,13 @@ async function extractBlobMetadata(response, pathname) {
     }
   }
 
-  // Construct URL from pathname and Vercel Blob URL structure
-  // Vercel Blob URLs are typically: https://<hash>.public.blob.vercel-storage.com/path
-  const blobHost = 'public.blob.vercel-storage.com';
-  const constructedUrl = `https://${blobHost}/${pathname}`;
+  // Get the URL from response headers (Vercel Blob returns it in headers)
+  const blobUrl = response.headers.get('x-vercel-blob-url') || 
+                  response.headers.get('x-blobstore-url') ||
+                  `https://public.blob.vercel-storage.com/${pathname}`;
 
   return {
-    url: constructedUrl,
+    url: blobUrl,
     pathname: pathname
   };
 }

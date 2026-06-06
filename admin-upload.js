@@ -1,20 +1,31 @@
 const crypto = require('crypto');
 const express = require('express');
-const session = require('express-session');
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const serveStatic = require('serve-static');
+const {
+  authMiddleware,
+  clearAdminSession,
+  isValidCsrfRequest,
+  startAdminSession
+} = require('./auth');
+const {
+  IMAGES_DIR,
+  loadEnquiries: loadStoredEnquiries,
+  loadMetadata: loadStoredMetadata,
+  loadSiteContent: loadStoredSiteContent,
+  localImageExists,
+  removeStoredImage,
+  saveEnquiries: saveStoredEnquiries,
+  saveMetadata: saveStoredMetadata,
+  saveSiteContent: saveStoredSiteContent,
+  storeUploadedImage
+} = require('./storage');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 const ROOT_DIR = __dirname;
-const IMAGES_DIR = path.join(ROOT_DIR, 'images');
-const DATA_DIR = path.join(ROOT_DIR, 'data');
-const METADATA_PATH = path.join(IMAGES_DIR, 'metadata.json');
-const ENQUIRIES_PATH = path.join(DATA_DIR, 'enquiries.json');
-const SITE_CONTENT_PATH = path.join(DATA_DIR, 'site-content.json');
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
@@ -179,27 +190,9 @@ const defaultSiteContent = {
   ]
 };
 
-ensureDirectory(IMAGES_DIR);
-ensureDirectory(DATA_DIR);
-
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'change-this-session-secret',
-    resave: false,
-    saveUninitialized: false
-  })
-);
-
-app.use((req, res, next) => {
-  if (!req.session.csrfToken) {
-    req.session.csrfToken = crypto.randomUUID();
-  }
-
-  res.locals.csrfToken = req.session.csrfToken;
-  next();
-});
+app.use(authMiddleware);
 
 app.use(
   serveStatic(ROOT_DIR, {
@@ -208,18 +201,8 @@ app.use(
 );
 app.use('/images', express.static(IMAGES_DIR));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, IMAGES_DIR);
-  },
-  filename: (req, file, cb) => {
-    const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]+/g, '-');
-    cb(null, `${Date.now()}-${safeName}`);
-  }
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 8 * 1024 * 1024,
     files: 12
@@ -234,19 +217,15 @@ const upload = multer({
   }
 });
 
-saveSiteContent(loadSiteContent());
-saveMetadata(loadMetadata());
-saveEnquiries(loadEnquiries());
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(ROOT_DIR, 'index.html'));
 });
 
-app.get('/api/site-content', (req, res) => {
-  const siteContent = loadSiteContent();
-  const portfolio = loadMetadata().map((image, index) => ({
+app.get('/api/site-content', async (req, res) => {
+  const siteContent = await loadSiteContent();
+  const portfolio = (await loadMetadata()).map((image, index) => ({
     id: image.id,
-    imageUrl: `/images/${encodeURIComponent(image.filename)}`,
+    imageUrl: resolveImageUrl(image),
     title: image.title || createPortfolioTitle(image.originalname),
     category: image.category,
     order: index + 1
@@ -258,7 +237,7 @@ app.get('/api/site-content', (req, res) => {
   });
 });
 
-app.post('/api/enquiries', (req, res) => {
+app.post('/api/enquiries', async (req, res) => {
   const payload = normalizeEnquiryInput(req.body);
   const validationError = validateEnquiry(payload);
 
@@ -266,30 +245,30 @@ app.post('/api/enquiries', (req, res) => {
     return res.status(400).json({ error: validationError });
   }
 
-  const enquiries = loadEnquiries();
+  const enquiries = await loadEnquiries();
   enquiries.push({
     id: createId('enquiry'),
     ...payload,
     status: 'new',
     createdAt: new Date().toISOString()
   });
-  saveEnquiries(enquiries);
+  await saveEnquiries(enquiries);
 
   res.status(201).json({ success: true });
 });
 
-app.get('/gallery', (req, res) => {
-  res.send(renderGalleryPage(loadMetadata(), normalizeCategory(req.query.category)));
+app.get('/gallery', async (req, res) => {
+  res.send(renderGalleryPage(await loadMetadata(), normalizeCategory(req.query.category)));
 });
 
 app.get('/admin/login', (req, res) => {
-  if (req.session.isAdmin) {
+  if (req.auth.isAdmin) {
     return res.redirect('/admin');
   }
 
   res.send(
     renderAdminLoginPage({
-      csrfToken: req.session.csrfToken,
+      csrfToken: req.csrfToken,
       error: req.query.error === '1'
     })
   );
@@ -300,7 +279,7 @@ app.post('/admin/login', verifyCsrf, (req, res) => {
   const password = typeof req.body.password === 'string' ? req.body.password : '';
 
   if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
-    req.session.isAdmin = true;
+    startAdminSession(res);
     return res.redirect('/admin');
   }
 
@@ -308,24 +287,29 @@ app.post('/admin/login', verifyCsrf, (req, res) => {
 });
 
 app.get('/admin/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/admin/login');
-  });
+  clearAdminSession(res);
+  res.redirect('/admin/login');
 });
 
-app.get('/admin', requireAdmin, (req, res) => {
+app.get('/admin', requireAdmin, async (req, res) => {
+  const [siteContent, images, enquiries] = await Promise.all([
+    loadSiteContent(),
+    loadMetadata(),
+    loadEnquiries()
+  ]);
+
   res.send(
     renderAdminDashboardPage({
-      siteContent: loadSiteContent(),
-      images: loadMetadata(),
-      enquiries: loadEnquiries(),
-      csrfToken: req.session.csrfToken,
+      siteContent,
+      images,
+      enquiries,
+      csrfToken: req.csrfToken,
       flash: normalizeFlash(req.query.flash, req.query.flashType)
     })
   );
 });
 
-app.post('/admin/content/settings', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/content/settings', requireAdmin, verifyCsrf, async (req, res) => {
   const nextSettings = normalizeSettings({
     heroTag: req.body.heroTag,
     heroTitlePrefix: req.body.heroTitlePrefix,
@@ -354,40 +338,40 @@ app.post('/admin/content/settings', requireAdmin, verifyCsrf, (req, res) => {
     return redirectToAdmin(res, validationError, 'error', 'settings');
   }
 
-  const siteContent = loadSiteContent();
+  const siteContent = await loadSiteContent();
   siteContent.settings = nextSettings;
-  saveSiteContent(siteContent);
+  await saveSiteContent(siteContent);
 
   redirectToAdmin(res, 'Site settings published.', 'success', 'settings');
 });
 
-app.post('/admin/content/services', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/content/services', requireAdmin, verifyCsrf, async (req, res) => {
   const services = parseNamedItems(req.body, 'service');
   if (!services.length) {
     return redirectToAdmin(res, 'Add at least one service before publishing.', 'error', 'services');
   }
 
-  const siteContent = loadSiteContent();
+  const siteContent = await loadSiteContent();
   siteContent.services = services;
-  saveSiteContent(siteContent);
+  await saveSiteContent(siteContent);
 
   redirectToAdmin(res, 'Services updated.', 'success', 'services');
 });
 
-app.post('/admin/content/process', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/content/process', requireAdmin, verifyCsrf, async (req, res) => {
   const steps = parseNamedItems(req.body, 'process');
   if (!steps.length) {
     return redirectToAdmin(res, 'Add at least one process step before publishing.', 'error', 'process');
   }
 
-  const siteContent = loadSiteContent();
+  const siteContent = await loadSiteContent();
   siteContent.process = steps;
-  saveSiteContent(siteContent);
+  await saveSiteContent(siteContent);
 
   redirectToAdmin(res, 'Process steps updated.', 'success', 'process');
 });
 
-app.post('/admin/content/testimonials', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/content/testimonials', requireAdmin, verifyCsrf, async (req, res) => {
   const testimonials = parseTestimonials(req.body);
   if (!testimonials.length) {
     return redirectToAdmin(
@@ -398,22 +382,22 @@ app.post('/admin/content/testimonials', requireAdmin, verifyCsrf, (req, res) => 
     );
   }
 
-  const siteContent = loadSiteContent();
+  const siteContent = await loadSiteContent();
   siteContent.testimonials = testimonials;
-  saveSiteContent(siteContent);
+  await saveSiteContent(siteContent);
 
   redirectToAdmin(res, 'Testimonials updated.', 'success', 'testimonials');
 });
 
-app.post('/admin/content/team', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/content/team', requireAdmin, verifyCsrf, async (req, res) => {
   const team = parseTeamMembers(req.body);
   if (!team.length) {
     return redirectToAdmin(res, 'Add at least one team profile before publishing.', 'error', 'team');
   }
 
-  const siteContent = loadSiteContent();
+  const siteContent = await loadSiteContent();
   siteContent.team = team;
-  saveSiteContent(siteContent);
+  await saveSiteContent(siteContent);
 
   redirectToAdmin(res, 'Team profiles updated.', 'success', 'team');
 });
@@ -423,7 +407,7 @@ app.post(
   requireAdmin,
   verifyCsrf,
   upload.array('images', 12),
-  (req, res) => {
+  async (req, res) => {
     const uploadedFiles = Array.isArray(req.files) ? req.files : [];
     if (!uploadedFiles.length) {
       return redirectToAdmin(res, 'Select at least one image to upload.', 'error', 'portfolio');
@@ -431,24 +415,28 @@ app.post(
 
     const category = normalizeCategory(req.body.category);
     if (!category) {
-      removeUploadedFiles(uploadedFiles);
       return redirectToAdmin(res, 'Choose a valid portfolio category.', 'error', 'portfolio');
     }
 
-    const images = loadMetadata();
+    const images = await loadMetadata();
     const startingOrder = images.length;
-    uploadedFiles.forEach((file, index) => {
+    const storedFiles = await Promise.all(uploadedFiles.map((file) => storeUploadedImage(file)));
+
+    storedFiles.forEach((file, index) => {
+      const originalname = uploadedFiles[index].originalname;
       images.push({
         id: createId('asset'),
         filename: file.filename,
-        originalname: file.originalname,
-        title: createPortfolioTitle(file.originalname),
+        imageUrl: file.imageUrl,
+        storagePath: file.storagePath,
+        originalname,
+        title: createPortfolioTitle(originalname),
         category,
         order: startingOrder + index + 1,
         createdAt: new Date().toISOString()
       });
     });
-    saveMetadata(images);
+    await saveMetadata(images);
 
     const uploadLabel =
       uploadedFiles.length === 1
@@ -458,10 +446,10 @@ app.post(
   }
 );
 
-app.post('/admin/portfolio/update', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/portfolio/update', requireAdmin, verifyCsrf, async (req, res) => {
   const id = sanitizeIdentifier(req.body.id);
   const category = normalizeCategory(req.body.category);
-  const images = loadMetadata();
+  const images = await loadMetadata();
   const image = images.find((entry) => entry.id === id);
 
   if (!image) {
@@ -476,13 +464,13 @@ app.post('/admin/portfolio/update', requireAdmin, verifyCsrf, (req, res) => {
   image.category = category;
   image.order = coerceOrder(req.body.order, image.order);
 
-  saveMetadata(images);
+  await saveMetadata(images);
   redirectToAdmin(res, 'Portfolio item updated.', 'success', 'portfolio');
 });
 
-app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, async (req, res) => {
   const id = sanitizeIdentifier(req.body.id);
-  const images = loadMetadata();
+  const images = await loadMetadata();
   const image = images.find((entry) => entry.id === id);
 
   if (!image) {
@@ -490,20 +478,16 @@ app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, (req, res) => {
   }
 
   const remainingImages = images.filter((entry) => entry.id !== id);
-  saveMetadata(remainingImages);
-
-  const filePath = path.join(IMAGES_DIR, image.filename);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
+  await saveMetadata(remainingImages);
+  await removeStoredImage(image);
 
   redirectToAdmin(res, 'Portfolio item removed.', 'success', 'portfolio');
 });
 
-app.post('/admin/enquiries/status', requireAdmin, verifyCsrf, (req, res) => {
+app.post('/admin/enquiries/status', requireAdmin, verifyCsrf, async (req, res) => {
   const id = sanitizeIdentifier(req.body.id);
   const status = normalizeEnquiryStatus(req.body.status);
-  const enquiries = loadEnquiries();
+  const enquiries = await loadEnquiries();
   const enquiry = enquiries.find((entry) => entry.id === id);
 
   if (!enquiry) {
@@ -515,7 +499,7 @@ app.post('/admin/enquiries/status', requireAdmin, verifyCsrf, (req, res) => {
   }
 
   enquiry.status = status;
-  saveEnquiries(enquiries);
+  await saveEnquiries(enquiries);
 
   redirectToAdmin(res, 'Enquiry status updated.', 'success', 'enquiries');
 });
@@ -547,7 +531,7 @@ if (require.main === module) {
 module.exports = app;
 
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.isAdmin) {
+  if (req.auth && req.auth.isAdmin) {
     return next();
   }
 
@@ -555,52 +539,46 @@ function requireAdmin(req, res, next) {
 }
 
 function verifyCsrf(req, res, next) {
-  const token =
-    (req.body && typeof req.body.csrfToken === 'string' && req.body.csrfToken) ||
-    (typeof req.query.csrfToken === 'string' && req.query.csrfToken) ||
-    (typeof req.get('x-csrf-token') === 'string' && req.get('x-csrf-token')) ||
-    '';
-
-  if (token && token === req.session.csrfToken) {
+  if (isValidCsrfRequest(req)) {
     return next();
   }
 
   res.status(403).send('Invalid request token.');
 }
 
-function loadSiteContent() {
-  const raw = readJsonObject(SITE_CONTENT_PATH, defaultSiteContent);
+async function loadSiteContent() {
+  const raw = await loadStoredSiteContent(defaultSiteContent);
   return normalizeSiteContent(raw);
 }
 
-function saveSiteContent(content) {
-  saveJson(SITE_CONTENT_PATH, normalizeSiteContent(content));
+async function saveSiteContent(content) {
+  await saveStoredSiteContent(normalizeSiteContent(content));
 }
 
-function loadMetadata() {
-  const items = readJsonArray(METADATA_PATH)
+async function loadMetadata() {
+  const items = (await loadStoredMetadata([]))
     .map((item, index) => normalizeMetadataItem(item, index))
-    .filter((item) => item.filename && fs.existsSync(path.join(IMAGES_DIR, item.filename)));
+    .filter(
+      (item) =>
+        resolveImageUrl(item) &&
+        (item.storagePath || item.imageUrl || (item.filename && localImageExists(item.filename)))
+    );
   return sortByOrder(items);
 }
 
-function saveMetadata(images) {
-  saveJson(
-    METADATA_PATH,
+async function saveMetadata(images) {
+  await saveStoredMetadata(
     sortByOrder(images.map((image, index) => normalizeMetadataItem(image, index)))
   );
 }
 
-function loadEnquiries() {
-  const enquiries = readJsonArray(ENQUIRIES_PATH).map((entry) => normalizeEnquiryRecord(entry));
+async function loadEnquiries() {
+  const enquiries = (await loadStoredEnquiries([])).map((entry) => normalizeEnquiryRecord(entry));
   return enquiries.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
-function saveEnquiries(enquiries) {
-  saveJson(
-    ENQUIRIES_PATH,
-    enquiries.map((entry) => normalizeEnquiryRecord(entry))
-  );
+async function saveEnquiries(enquiries) {
+  await saveStoredEnquiries(enquiries.map((entry) => normalizeEnquiryRecord(entry)));
 }
 
 function normalizeSiteContent(raw) {
@@ -724,10 +702,13 @@ function normalizeMetadataItem(item, index) {
   const filename = typeof source.filename === 'string' ? path.basename(source.filename) : '';
   const originalname =
     sanitizeShortText(source.originalname) || sanitizeShortText(source.title) || filename;
+  const imageUrl = normalizeAssetUrl(source.imageUrl);
 
   return {
     id: sanitizeIdentifier(source.id) || createId('asset'),
     filename,
+    imageUrl: imageUrl || (filename ? `/images/${encodeURIComponent(filename)}` : ''),
+    storagePath: sanitizeStoragePath(source.storagePath),
     originalname,
     title: sanitizeShortText(source.title) || createPortfolioTitle(originalname),
     category: normalizeCategory(source.category) || 'Other',
@@ -863,46 +844,6 @@ function normalizeEnquiryStatus(value) {
   return enquiryStatuses.includes(value) ? value : null;
 }
 
-function readJsonArray(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error(`Failed to read ${filePath}:`, error);
-    return [];
-  }
-}
-
-function readJsonObject(filePath, fallback) {
-  if (!fs.existsSync(filePath)) {
-    return fallback;
-  }
-
-  try {
-    const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
-  } catch (error) {
-    console.error(`Failed to read ${filePath}:`, error);
-    return fallback;
-  }
-}
-
-function saveJson(filePath, value) {
-  const tempPath = `${filePath}.tmp`;
-  fs.writeFileSync(tempPath, JSON.stringify(value, null, 2), 'utf8');
-  fs.renameSync(tempPath, filePath);
-}
-
-function ensureDirectory(directoryPath) {
-  if (!fs.existsSync(directoryPath)) {
-    fs.mkdirSync(directoryPath, { recursive: true });
-  }
-}
-
 function ensureArray(value) {
   if (Array.isArray(value)) {
     return value;
@@ -986,6 +927,31 @@ function normalizeAssetUrl(value) {
   }
 
   return normalizeUrlInput(trimmed);
+}
+
+function sanitizeStoragePath(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  return /^[a-zA-Z0-9/_\-.%]+$/.test(trimmed) ? trimmed : '';
+}
+
+function resolveImageUrl(image) {
+  if (!image || typeof image !== 'object') {
+    return '';
+  }
+
+  if (image.imageUrl) {
+    return image.imageUrl;
+  }
+
+  if (!image.filename) {
+    return '';
+  }
+
+  return `/images/${encodeURIComponent(image.filename)}`;
 }
 
 function isValidEmail(value) {
@@ -1091,14 +1057,6 @@ function renderGalleryPage(images, selectedCategory) {
         return '';
       }
 
-      function removeUploadedFiles(files) {
-        files.forEach((file) => {
-          if (file && typeof file.path === 'string' && fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        });
-      }
-
       return `
         <section class="gallery-group">
           <div class="gallery-group-header">
@@ -1116,7 +1074,7 @@ function renderGalleryPage(images, selectedCategory) {
                     <div
                       class="gallery-card-media"
                       ${renderViewerDataAttributes(
-                        `/images/${encodeURIComponent(image.filename)}`,
+                        resolveImageUrl(image),
                         image.title,
                         image.category,
                         `View ${image.title} in full size`
@@ -1124,7 +1082,7 @@ function renderGalleryPage(images, selectedCategory) {
                       role="button"
                       tabindex="0"
                     >
-                      <img src="/images/${encodeURIComponent(image.filename)}" alt="${escapeHtml(
+                      <img src="${escapeHtml(resolveImageUrl(image))}" alt="${escapeHtml(
                         `${image.title} — ${image.category}`
                       )}" loading="lazy" decoding="async">
                     </div>
@@ -1138,7 +1096,7 @@ function renderGalleryPage(images, selectedCategory) {
                         class="admin-button admin-button-secondary gallery-view-button"
                         type="button"
                         data-viewer-trigger="true"
-                        data-viewer-src="/images/${encodeURIComponent(image.filename)}"
+                        data-viewer-src="${escapeHtml(resolveImageUrl(image))}"
                         data-viewer-title="${escapeHtml(image.title)}"
                         data-viewer-category="${escapeHtml(image.category)}"
                         aria-label="View ${escapeHtml(image.title)} in full size"
@@ -1777,7 +1735,7 @@ function renderTeamMediaPreview(item) {
 function renderPortfolioCard(image, csrfToken) {
   return `
     <article class="portfolio-admin-card">
-      <img src="/images/${encodeURIComponent(image.filename)}" alt="${escapeHtml(image.title)}">
+      <img src="${escapeHtml(resolveImageUrl(image))}" alt="${escapeHtml(image.title)}">
       <div class="portfolio-admin-copy">
         <div class="portfolio-admin-title">
           <strong>${escapeHtml(image.title)}</strong>

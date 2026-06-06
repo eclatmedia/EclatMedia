@@ -54,7 +54,7 @@ async function storeUploadedImage(file) {
 
     return {
       filename,
-      imageUrl: blob.url,
+      imageUrl: blob.url || blob.publicUrl || `https://${blob.pathname}`,
       storagePath: blob.pathname
     };
   }

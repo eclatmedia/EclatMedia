@@ -45,20 +45,35 @@ async function storeUploadedImage(file) {
   const filename = `${Date.now()}-${safeName}`;
 
   if (BLOB_ENABLED) {
-    const blob = await put(`images/${filename}`, file.buffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: false,
-      contentType: file.mimetype || undefined
-    });
+    try {
+      const blob = await put(`images/${filename}`, file.buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: false,
+        contentType: file.mimetype || 'application/octet-stream'
+      });
 
-    return {
-      filename,
-      imageUrl: blob.url || blob.publicUrl || `https://${blob.pathname}`,
-      storagePath: blob.pathname
-    };
+      // Handle multiple possible URL properties from Vercel Blob
+      const imageUrl = blob.url || blob.publicUrl || `https://blob.vercel-storage.com/${blob.pathname}`;
+
+      return {
+        filename,
+        imageUrl: imageUrl.toString(),
+        storagePath: blob.pathname || `images/${filename}`
+      };
+    } catch (error) {
+      console.error('Failed to upload to Vercel Blob:', error);
+      // Fallback to local storage if blob upload fails
+      fs.writeFileSync(path.join(IMAGES_DIR, filename), file.buffer);
+      return {
+        filename,
+        imageUrl: `/images/${encodeURIComponent(filename)}`,
+        storagePath: `images/${filename}`
+      };
+    }
   }
 
+  // Local storage
   fs.writeFileSync(path.join(IMAGES_DIR, filename), file.buffer);
 
   return {
@@ -73,19 +88,34 @@ async function removeStoredImage(image) {
     return;
   }
 
+  // Try to delete from Vercel Blob first
   if (BLOB_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
     try {
       await del(image.storagePath);
+      console.log(`Deleted blob: ${image.storagePath}`);
       return;
     } catch (error) {
-      if (error && error.name !== 'BlobNotFoundError') {
-        throw error;
+      // BlobNotFoundError is fine (already deleted), other errors should be logged
+      if (error && error.name === 'BlobNotFoundError') {
+        console.log(`Blob already deleted: ${image.storagePath}`);
+      } else {
+        console.error(`Failed to delete blob ${image.storagePath}:`, error);
+        // Don't throw - continue to try local deletion
       }
     }
   }
 
-  if (typeof image.filename === 'string' && localImageExists(image.filename)) {
-    fs.unlinkSync(path.join(IMAGES_DIR, path.basename(image.filename)));
+  // Try to delete local file
+  if (typeof image.filename === 'string' && image.filename) {
+    const localFilePath = path.join(IMAGES_DIR, path.basename(image.filename));
+    try {
+      if (fs.existsSync(localFilePath)) {
+        fs.unlinkSync(localFilePath);
+        console.log(`Deleted local file: ${image.filename}`);
+      }
+    } catch (error) {
+      console.error(`Failed to delete local file ${image.filename}:`, error);
+    }
   }
 }
 
@@ -94,18 +124,20 @@ async function readStoredImage(image) {
     return null;
   }
 
+  // Try Vercel Blob first
   if (BLOB_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
     const blob = await readBlobImage(image.storagePath);
     if (blob && blob.statusCode === 200 && blob.stream) {
       return {
         kind: 'blob',
         stream: blob.stream,
-        contentType: blob.blob.contentType || 'application/octet-stream',
-        cacheControl: blob.blob.cacheControl || 'public, max-age=3600'
+        contentType: blob.blob?.contentType || 'application/octet-stream',
+        cacheControl: blob.blob?.cacheControl || 'public, max-age=3600'
       };
     }
   }
 
+  // Try local file
   if (typeof image.filename === 'string' && localImageExists(image.filename)) {
     return {
       kind: 'local',
@@ -146,15 +178,20 @@ async function readJsonObject(blobPath, localPath, fallback) {
 
 async function saveJson(blobPath, localPath, value) {
   if (BLOB_ENABLED) {
-    await put(blobPath, JSON.stringify(value, null, 2), {
-      access: 'private',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: 'application/json'
-    });
-    return;
+    try {
+      await put(blobPath, JSON.stringify(value, null, 2), {
+        access: 'private',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'application/json'
+      });
+    } catch (error) {
+      console.error(`Failed to save to Blob ${blobPath}:`, error);
+      // Fallback to local storage
+    }
   }
 
+  // Always save locally as backup
   const tempPath = `${localPath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(value, null, 2), 'utf8');
   fs.renameSync(tempPath, localPath);

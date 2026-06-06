@@ -10,6 +10,10 @@
       "destination": "/api/index.js"
     },
     {
+      "source": "/images/:path*",
+      "destination": "/api/index.js"
+    },
+    {
       "source": "/admin",
       "destination": "/api/index.js"
     },

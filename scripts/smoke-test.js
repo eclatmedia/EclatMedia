@@ -5,7 +5,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const START_TIMEOUT_MS = 15000;
 
 async function main() {
-  const server = spawn(process.execPath, ['admin-upload.js'], {
+  const server = spawn(process.execPath, ['server.js'], {
     cwd: process.cwd(),
     env: { ...process.env, PORT: String(PORT) },
     stdio: ['ignore', 'pipe', 'pipe']

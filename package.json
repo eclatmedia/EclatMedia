@@ -2,10 +2,10 @@
   "name": "eclat-media",
   "version": "1.0.0",
   "description": "",
-  "main": "admin-upload.js",
+  "main": "server.js",
   "scripts": {
     "test": "node ./scripts/smoke-test.js",
-    "start": "node admin-upload.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",

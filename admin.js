@@ -99,9 +99,15 @@ function initializeDirectUploadForm() {
           },
           body: file
         });
-        const uploadedBlob = await readJsonResponse(uploadResponse);
-        if (!uploadResponse.ok || !uploadedBlob.url || !uploadedBlob.pathname) {
-          throw new Error(uploadedBlob.error || 'Unable to upload image.');
+
+        if (!uploadResponse.ok) {
+          throw new Error('Unable to upload image to storage.');
+        }
+
+        // Extract blob metadata from response headers and body
+        const uploadedBlob = await extractBlobMetadata(uploadResponse, pathname);
+        if (!uploadedBlob.url || !uploadedBlob.pathname) {
+          throw new Error('Unable to retrieve uploaded image details.');
         }
 
         const response = await fetch('/api/admin/portfolio/register', {
@@ -154,6 +160,32 @@ function createUploadPathname(file, index) {
     .replace(/[^a-zA-Z0-9._-]+/g, '-');
 
   return `images/${Date.now()}-${index}-${safeName || 'upload'}`;
+}
+
+async function extractBlobMetadata(response, pathname) {
+  const contentType = response.headers.get('content-type') || '';
+  
+  // Try to parse JSON response from Vercel Blob
+  if (contentType.includes('application/json')) {
+    try {
+      const json = await response.json();
+      if (json.url && json.pathname) {
+        return json;
+      }
+    } catch (e) {
+      // Fall through to construct URL
+    }
+  }
+
+  // Construct URL from pathname and Vercel Blob URL structure
+  // Vercel Blob URLs are typically: https://<hash>.public.blob.vercel-storage.com/path
+  const blobHost = 'public.blob.vercel-storage.com';
+  const constructedUrl = `https://${blobHost}/${pathname}`;
+
+  return {
+    url: constructedUrl,
+    pathname: pathname
+  };
 }
 
 async function readJsonResponse(response) {

@@ -12,16 +12,30 @@
   <!-- NAV -->
   <nav>
     <a href="#home" class="logo">É<span id="nav-logo-text">clat</span> Media</a>
-    <ul class="nav-links">
-      <li><a href="#portfolio">Portfolio</a></li>
-      <li><a href="#services">Services</a></li>
-      <li><a href="#about">About</a></li>
-      <li><a href="#team">Team</a></li>
-      <li><a href="#process">Process</a></li>
-    </ul>
-    <button class="nav-cta" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">
-      Book a Session
+    <button
+      class="nav-toggle"
+      id="nav-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-nav-panel"
+      aria-label="Toggle navigation"
+    >
+      <span class="nav-toggle-bar" aria-hidden="true"></span>
+      <span class="nav-toggle-bar" aria-hidden="true"></span>
+      <span class="nav-toggle-bar" aria-hidden="true"></span>
     </button>
+    <div class="nav-panel" id="site-nav-panel">
+      <ul class="nav-links">
+        <li><a href="#portfolio">Portfolio</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#team">Team</a></li>
+        <li><a href="#process">Process</a></li>
+      </ul>
+      <button class="nav-cta" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">
+        Book a Session
+      </button>
+    </div>
   </nav>
 
   <!-- HERO -->

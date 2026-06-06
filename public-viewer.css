@@ -123,3 +123,35 @@
     padding: 22px 20px 20px;
   }
 }
+
+@media (max-width: 640px) {
+  .public-viewer {
+    padding: 10px;
+  }
+
+  .public-viewer-dialog {
+    border-radius: 22px;
+  }
+
+  .public-viewer-figure {
+    min-height: 220px;
+  }
+
+  .public-viewer-sidebar {
+    padding: 18px 16px 16px;
+    gap: 16px;
+  }
+
+  .public-viewer-title {
+    font-size: clamp(1.6rem, 7vw, 2.2rem);
+  }
+
+  .public-viewer-copy {
+    font-size: 0.78rem;
+    line-height: 1.65;
+  }
+
+  .public-viewer-close {
+    width: 100%;
+  }
+}

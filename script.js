@@ -120,6 +120,7 @@ const heroMosaicRotationDelay = 3200;
 let heroMosaicRotationTimer;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeMobileNav();
   initializeScrollEffects();
 
   const content = await loadSiteContent();
@@ -598,6 +599,46 @@ function initializeScrollEffects() {
   }
 
   refreshRevealObserver();
+}
+
+function initializeMobileNav() {
+  const nav = document.querySelector('nav');
+  const toggle = document.getElementById('nav-toggle');
+  const panel = document.getElementById('site-nav-panel');
+  if (!nav || !toggle || !panel) {
+    return;
+  }
+
+  const closeNavigation = () => {
+    nav.classList.remove('nav-open');
+    document.body.classList.remove('nav-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+
+  toggle.addEventListener('click', () => {
+    const shouldOpen = !nav.classList.contains('nav-open');
+    nav.classList.toggle('nav-open', shouldOpen);
+    document.body.classList.toggle('nav-open', shouldOpen);
+    toggle.setAttribute('aria-expanded', String(shouldOpen));
+  });
+
+  panel.querySelectorAll('a, button.nav-cta').forEach((element) => {
+    element.addEventListener('click', () => {
+      closeNavigation();
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900) {
+      closeNavigation();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeNavigation();
+    }
+  });
 }
 
 function refreshRevealObserver() {

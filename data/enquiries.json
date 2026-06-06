@@ -1,0 +1,52 @@
+[
+  {
+    "id": "enquiry-d9160e9f80cd",
+    "name": "David",
+    "email": "davidalozieobioma@gmail.com",
+    "service": "wedding",
+    "date": "30th december",
+    "message": "i have wedding",
+    "status": "new",
+    "createdAt": "2026-05-31T14:42:33.554Z"
+  },
+  {
+    "id": "1780190436715-161mg2",
+    "name": "David",
+    "email": "davidalozieobioma@gmail.com",
+    "service": "Weeding",
+    "date": "december",
+    "message": "hi",
+    "status": "new",
+    "createdAt": "2026-05-31T01:20:36.715Z"
+  },
+  {
+    "id": "1780190205316-niqv0g",
+    "name": "Colour Check",
+    "email": "colour@example.com",
+    "service": "Wedding",
+    "date": "2026-07-01",
+    "message": "Final verification after palette update.",
+    "status": "new",
+    "createdAt": "2026-05-31T01:16:45.316Z"
+  },
+  {
+    "id": "1780189355458-ddh8c3",
+    "name": "Test User",
+    "email": "test@example.com",
+    "service": "Portrait",
+    "date": "2026-06-15",
+    "message": "Checking the form.",
+    "status": "new",
+    "createdAt": "2026-05-31T01:02:35.458Z"
+  },
+  {
+    "id": "1780189071499-j2ip28",
+    "name": "Test User",
+    "email": "test@example.com",
+    "service": "Portrait",
+    "date": "2026-06-15",
+    "message": "Checking the form.",
+    "status": "new",
+    "createdAt": "2026-05-31T00:57:51.499Z"
+  }
+]

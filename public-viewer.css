@@ -1,0 +1,125 @@
+.viewer-open {
+  overflow: hidden;
+}
+
+.public-viewer[hidden] {
+  display: none;
+}
+
+.public-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.public-viewer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 7, 6, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.public-viewer-dialog {
+  position: relative;
+  width: min(1180px, 100%);
+  max-height: min(90vh, 920px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  background: linear-gradient(180deg, rgba(23,20,18,0.98), rgba(13,11,10,0.98));
+  border: 1px solid rgba(210,177,95,0.18);
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55);
+}
+
+.public-viewer-figure {
+  margin: 0;
+  min-height: 0;
+  background:
+    radial-gradient(circle at top, rgba(210,177,95,0.12), transparent 28%),
+    #0c0a09;
+}
+
+.public-viewer-image {
+  width: 100%;
+  height: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  display: block;
+}
+
+.public-viewer-sidebar {
+  padding: 32px 28px 28px;
+  border-left: 1px solid rgba(210,177,95,0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.public-viewer-kicker {
+  margin: 0 0 12px;
+  color: #d2b15f;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.public-viewer-title {
+  margin: 0 0 12px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 400;
+  line-height: 0.96;
+  color: #f4eee4;
+}
+
+.public-viewer-copy {
+  margin: 0;
+  color: rgba(244,238,228,0.72);
+  line-height: 1.75;
+  font-size: 0.84rem;
+}
+
+.public-viewer-close {
+  align-self: flex-start;
+  border: 1px solid rgba(210,177,95,0.28);
+  background: transparent;
+  color: #f4eee4;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font: inherit;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.public-viewer-close:hover,
+.public-viewer-close:focus-visible {
+  background: rgba(210,177,95,0.14);
+  border-color: #d2b15f;
+}
+
+@media (max-width: 900px) {
+  .public-viewer {
+    padding: 16px;
+  }
+
+  .public-viewer-dialog {
+    grid-template-columns: 1fr;
+    max-height: 92vh;
+  }
+
+  .public-viewer-figure {
+    min-height: 320px;
+  }
+
+  .public-viewer-sidebar {
+    border-left: none;
+    border-top: 1px solid rgba(210,177,95,0.12);
+    padding: 22px 20px 20px;
+  }
+}

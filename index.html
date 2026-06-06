@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Éclat Media — Photography</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Alte+Haas+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/public-viewer.css">
+</head>
+<body>
+  <!-- NAV -->
+  <nav>
+    <a href="#home" class="logo">É<span id="nav-logo-text">clat</span> Media</a>
+    <ul class="nav-links">
+      <li><a href="#portfolio">Portfolio</a></li>
+      <li><a href="#services">Services</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#team">Team</a></li>
+      <li><a href="#process">Process</a></li>
+    </ul>
+    <button class="nav-cta" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">
+      Book a Session
+    </button>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-bg"></div>
+    <div class="hero-mosaic">
+      <div class="mosaic-cell ph1" data-label="Portrait"><div class="layer"></div><div class="figure"></div></div>
+      <div class="mosaic-cell ph2" data-label="Wedding"><div class="layer"></div></div>
+      <div class="mosaic-cell ph3" data-label="Editorial"><div class="layer"></div></div>
+      <div class="mosaic-cell ph4" data-label="Commercial"><div class="layer"></div></div>
+    </div>
+    <figure class="hero-camera">
+      <img
+        src="https://www.image2url.com/r2/default/images/1780758003281-8d08cc4f-b9fe-4549-83de-9a977b61e1f2.jpeg"
+        alt="Sony Alpha 7 IV mirrorless camera"
+        class="hero-camera-image"
+        width="1800"
+        height="1200"
+      >
+      <figcaption class="hero-camera-credit">
+        Sony &alpha;7 IV reference image
+      </figcaption>
+      <span class="hero-camera-shadow" aria-hidden="true"></span>
+    </figure>
+    <div class="hero-content">
+      <p class="hero-tag" id="hero-tag">— Visual Storytelling Studio</p>
+      <h1 class="hero-title">
+        <span id="hero-title-prefix">Crafting</span><br><em id="hero-title-emphasis">Luminous</em><br><span id="hero-title-suffix">Narratives</span>
+      </h1>
+      <p class="hero-subtitle" id="hero-subtitle">Where light becomes language. We create images that transcend documentation — photographs that breathe, emote, and endure.</p>
+      <div class="hero-actions">
+        <a href="#portfolio" class="btn-primary">View Portfolio</a>
+        <a href="#booking" class="btn-ghost">Book a Session</a>
+      </div>
+    </div>
+    <div class="hero-scroll">
+      <div class="scroll-line"></div>
+      <span class="scroll-label">Scroll</span>
+    </div>
+  </section>
+
+  <div class="gold-line"></div>
+
+  <!-- SERVICES -->
+  <section class="section" id="services">
+    <p class="section-label reveal">— What We Offer</p>
+    <h2 class="section-title reveal">Specialised <em>disciplines</em>,<br>extraordinary results.</h2>
+    <div class="services-grid" id="services-grid">
+      <!-- Populated by script.js -->
+      <div class="service-card reveal"><span class="service-num">01</span><div class="service-icon"></div><h3 class="service-name">Loading…</h3><p class="service-desc"></p></div>
+    </div>
+  </section>
+
+  <!-- PORTFOLIO -->
+  <section id="portfolio" class="portfolio">
+    <div class="portfolio-header reveal">
+      <div>
+        <p class="section-label">— Selected Work</p>
+        <h2 class="section-title" style="margin-bottom:0">Recent <em>projects</em></h2>
+      </div>
+      <a href="/gallery" class="btn-ghost" id="portfolio-gallery-link" style="color:var(--gold);opacity:1">View All Work</a>
+    </div>
+    <div class="portfolio-controls reveal">
+      <div class="portfolio-filters" id="portfolio-filters" aria-label="Portfolio categories">
+        <!-- Populated by script.js -->
+      </div>
+      <p class="portfolio-status" id="portfolio-status"></p>
+    </div>
+    <div class="portfolio-strip" id="portfolio-strip">
+      <!-- Populated by script.js -->
+    </div>
+  </section>
+
+  <div class="gold-line"></div>
+
+  <!-- ABOUT -->
+  <section id="about" class="about">
+    <div class="about-visual">
+      <div class="about-visual-bg"></div>
+      <div class="about-visual-accent"></div>
+      <p class="about-visual-quote" id="about-quote">"Photography is not about the camera. It is about the photographer — their patience, their eye, their willingness to wait for the world to become itself."</p>
+      <div class="about-visual-stat">
+        <div class="stat-num" id="about-years">12+</div>
+        <div class="stat-label">Years of Practice</div>
+      </div>
+    </div>
+    <div class="about-content">
+      <p class="section-label reveal">— Our Story</p>
+      <h2 class="section-title reveal">Born from a <em>passion</em><br>for authentic light.</h2>
+      <div class="about-text reveal" id="about-text">
+        <p>Éclat Media was founded on a simple belief: that every subject — human or otherwise — has an inner light.</p>
+      </div>
+      <div class="about-metrics reveal">
+        <div class="metric"><div class="metric-val" id="metric-clients">340+</div><div class="metric-lbl">Clients Served</div></div>
+        <div class="metric"><div class="metric-val" id="metric-awards">28</div><div class="metric-lbl">Awards Won</div></div>
+        <div class="metric"><div class="metric-val" id="metric-countries">14</div><div class="metric-lbl">Countries Shot In</div></div>
+      </div>
+      <a href="#booking" class="btn-primary reveal">Work With Us</a>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section class="team section" id="team">
+    <div class="team-intro reveal">
+      <div>
+        <p class="section-label">— Our Team</p>
+        <h2 class="section-title">The people shaping each <em>frame</em>,<br>from concept to delivery.</h2>
+      </div>
+      <p class="team-copy">A calm, detail-driven team blending creative direction, production care, and premium photography to deliver a seamless client experience.</p>
+    </div>
+    <div class="team-grid" id="team-grid">
+      <!-- Populated by script.js -->
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section class="process" id="process">
+    <p class="section-label reveal">— How It Works</p>
+    <h2 class="section-title reveal">A seamless process,<br>from first call <em>to final print.</em></h2>
+    <div class="process-steps" id="process-steps">
+      <div class="process-step reveal">
+        <div class="step-num">01</div>
+        <h3 class="step-name">Discovery</h3>
+        <p class="step-desc">We start with a conversation about your vision, references, schedule, and the feeling you want the work to carry.</p>
+      </div>
+      <div class="process-step reveal">
+        <div class="step-num">02</div>
+        <h3 class="step-name">Planning</h3>
+        <p class="step-desc">Locations, styling notes, timelines, and shot priorities are shaped into a clear production plan.</p>
+      </div>
+      <div class="process-step reveal">
+        <div class="step-num">03</div>
+        <h3 class="step-name">Capture</h3>
+        <p class="step-desc">On the day, we direct lightly and observe carefully so the final images feel polished and alive.</p>
+      </div>
+      <div class="process-step reveal">
+        <div class="step-num">04</div>
+        <h3 class="step-name">Delivery</h3>
+        <p class="step-desc">Your gallery is edited with consistency and care, then delivered in a format ready for print and digital use.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="testimonials" id="testimonials">
+    <p class="section-label reveal">— Client Stories</p>
+    <h2 class="section-title reveal">Words from those<br>who <em>trusted us.</em></h2>
+    <div class="testimonials-grid" id="testimonials-grid">
+      <article class="testimonial reveal">
+        <p class="testimonial-text">“The photos felt editorial and deeply personal at the same time. Every frame looked like a memory already preserved.”</p>
+        <div class="testimonial-meta">
+          <div class="testimonial-author">Amelia Hart</div>
+          <div class="testimonial-role">Bride</div>
+        </div>
+      </article>
+      <article class="testimonial reveal">
+        <p class="testimonial-text">“Éclat gave our launch campaign warmth and sophistication. The images elevated the brand instantly.”</p>
+        <div class="testimonial-meta">
+          <div class="testimonial-author">Marcus Lee</div>
+          <div class="testimonial-role">Creative Director</div>
+        </div>
+      </article>
+      <article class="testimonial reveal">
+        <p class="testimonial-text">“The entire process was calm, intentional, and beautifully organised. We felt looked after from start to finish.”</p>
+        <div class="testimonial-meta">
+          <div class="testimonial-author">Sofia Bennett</div>
+          <div class="testimonial-role">Portrait Client</div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- BOOKING -->
+  <section class="booking" id="booking">
+    <h2 class="booking-title reveal">
+      <span id="booking-title-prefix">Let's create something</span><br><em id="booking-title-emphasis">extraordinary</em> <span id="booking-title-suffix">together.</span>
+    </h2>
+    <p class="booking-sub reveal" id="booking-subtitle">Tell us about your project. We'll be in touch within 24 hours.</p>
+    <div class="booking-form reveal">
+      <div class="form-row">
+        <input class="form-field" id="f-name" type="text" placeholder="Your Name">
+        <input class="form-field" id="f-email" type="email" placeholder="Email Address">
+      </div>
+      <div class="form-row">
+        <input class="form-field" id="f-service" type="text" placeholder="Service Type">
+        <input class="form-field" id="f-date" type="text" placeholder="Preferred Date">
+      </div>
+      <textarea class="form-field" id="f-message" placeholder="Tell us about your vision…"></textarea>
+      <button class="form-submit" id="form-submit">Send Enquiry →</button>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-brand">
+      <a href="#home" class="logo">É<span style="color:var(--gold);font-style:italic">clat</span> Media</a>
+      <p class="footer-tagline" id="footer-tagline">Visual storytelling for those who
+believe images should endure.
+
+London, UK — Available Worldwide</p>
+    </div>
+    <div class="footer-col"><h4>Navigate</h4><ul>
+      <li><a href="#portfolio">Portfolio</a></li><li><a href="#services">Services</a></li>
+      <li><a href="#about">About</a></li><li><a href="#team">Team</a></li><li><a href="#process">Process</a></li>
+      <li><a href="#booking">Contact</a></li>
+    </ul></div>
+    <div class="footer-col"><h4>Services</h4><ul>
+      <li><a href="#">Wedding</a></li><li><a href="#">Portrait</a></li>
+      <li><a href="#">Commercial</a></li><li><a href="#">Fine Art</a></li><li><a href="#">Video</a></li>
+    </ul></div>
+    <div class="footer-col"><h4>Connect</h4><ul>
+      <li><a href="#" id="footer-instagram">Instagram</a></li>
+      <li><a href="#" id="footer-pinterest">Pinterest</a></li>
+      <li><a href="#" id="footer-linkedin">LinkedIn</a></li>
+      <li><a href="#" id="footer-email">hello@eclatmedia.co</a></li>
+    </ul></div>
+  </footer>
+  <div class="footer-bottom">
+    <p>© 2026 Éclat Media. All rights reserved.</p>
+    <p>Crafted with intention.</p>
+  </div>
+
+  <script src="/public-viewer.js" defer></script>
+  <script src="/script.js" defer></script>
+</body>
+</html>

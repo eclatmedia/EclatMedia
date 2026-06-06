@@ -1,0 +1,141 @@
+{
+  "settings": {
+    "heroTag": "— Visual Storytelling Studio",
+    "heroTitlePrefix": "Crafting",
+    "heroTitleEmphasis": "Luminous",
+    "heroTitleSuffix": "Narratives",
+    "heroSubtitle": "Where light becomes language. We create images that transcend documentation — photographs that breathe, emote, and endure.",
+    "aboutQuote": "\"Photography is not about the camera. It is about the photographer — their patience, their eye, their willingness to wait for the world to become itself.\"",
+    "aboutYears": "12+",
+    "metricClients": "340+",
+    "metricAwards": "28",
+    "metricCountries": "14",
+    "aboutParagraphs": [
+      "Éclat Media was founded on a simple belief: that every subject — human or otherwise — has an inner light.",
+      "We shape calm, editorial imagery with a documentary instinct, creating photographs that feel luxurious without losing honesty.",
+      "From intimate portraits to large celebrations and commercial campaigns, every project is guided by detail, atmosphere, and story."
+    ],
+    "instagramUrl": "https://instagram.com/",
+    "pinterestUrl": "https://pinterest.com/",
+    "linkedinUrl": "https://linkedin.com/",
+    "contactEmail": "eclatmedia2024@gmail.com",
+    "bookingTitlePrefix": "Let's create something",
+    "bookingTitleEmphasis": "extraordinary",
+    "bookingTitleSuffix": "together.",
+    "bookingSubtitle": "Tell us about your project. We'll be in touch within 24 hours.",
+    "footerTagline": "Visual storytelling for those who\nbelieve images should endure.\n\nLondon, UK — Available Worldwide"
+  },
+  "services": [
+    {
+      "id": "service-wedding",
+      "name": "Wedding Photography",
+      "description": "Elegant coverage for intimate ceremonies and destination celebrations, crafted with a cinematic eye.",
+      "order": 1
+    },
+    {
+      "id": "service-portrait",
+      "name": "Portrait Sessions",
+      "description": "Modern portraiture for individuals, couples, and families with gentle direction and timeless styling.",
+      "order": 2
+    },
+    {
+      "id": "service-brand",
+      "name": "Brand Storytelling",
+      "description": "Refined visual assets for founders, products, and campaigns that need atmosphere as much as clarity.",
+      "order": 3
+    },
+    {
+      "id": "service-fine-art-exhibition",
+      "name": "Fine Art & Exhibition",
+      "description": "Thoughtful imagery for artists, galleries, and curated exhibitions that deserves a refined, immersive presentation.",
+      "order": 4
+    },
+    {
+      "id": "service-lifestyle-family",
+      "name": "Lifestyle & Family",
+      "description": "Warm, natural sessions that preserve connection, personality, and everyday beauty with polished direction.",
+      "order": 5
+    },
+    {
+      "id": "service-video-motion",
+      "name": "Video & Motion",
+      "description": "Cinematic motion coverage for campaigns, events, and stories that need atmosphere, movement, and strong visual rhythm.",
+      "order": 6
+    }
+  ],
+  "process": [
+    {
+      "id": "process-discovery",
+      "name": "Discovery",
+      "description": "We start with a conversation about your vision, references, schedule, and the feeling you want the work to carry.",
+      "order": 1
+    },
+    {
+      "id": "process-planning",
+      "name": "Planning",
+      "description": "Locations, styling notes, timelines, and shot priorities are shaped into a clear production plan.",
+      "order": 2
+    },
+    {
+      "id": "process-capture",
+      "name": "Capture",
+      "description": "On the day, we direct lightly and observe carefully so the final images feel polished and alive.",
+      "order": 3
+    },
+    {
+      "id": "process-delivery",
+      "name": "Delivery",
+      "description": "Your gallery is edited with consistency and care, then delivered in a format ready for print and digital use.",
+      "order": 4
+    }
+  ],
+  "testimonials": [
+    {
+      "id": "testimonial-amelia",
+      "text": "The photos felt editorial and deeply personal at the same time. Every frame looked like a memory already preserved.",
+      "author": "Amelia Hart",
+      "role": "Bride",
+      "order": 1
+    },
+    {
+      "id": "testimonial-marcus",
+      "text": "Éclat gave our launch campaign warmth and sophistication. The images elevated the brand instantly.",
+      "author": "Marcus Lee",
+      "role": "Creative Director",
+      "order": 2
+    },
+    {
+      "id": "testimonial-sofia",
+      "text": "The entire process was calm, intentional, and beautifully organised. We felt looked after from start to finish.",
+      "author": "Sofia Bennett",
+      "role": "Portrait Client",
+      "order": 3
+    }
+  ],
+  "team": [
+    {
+      "id": "team-arielle",
+      "name": "Arielle Bennett",
+      "role": "Creative Director",
+      "bio": "Arielle shapes the visual direction of every commission, translating brand vision and personal stories into imagery with polish, warmth, and intention.",
+      "imageUrl": "https://www.image2url.com/r2/default/images/1780220222896-8a6724f6-70c7-4eee-b827-f4b47dca565a.jpeg",
+      "order": 1
+    },
+    {
+      "id": "team-julian",
+      "name": "Julian Hart",
+      "role": "Lead Photographer",
+      "bio": "Julian leads production on set and on location, balancing calm direction with documentary instincts to create refined photographs that still feel alive.",
+      "imageUrl": "",
+      "order": 2
+    },
+    {
+      "id": "team-naomi",
+      "name": "Naomi Clarke",
+      "role": "Client Experience Producer",
+      "bio": "Naomi keeps each project seamless from planning through delivery, ensuring every timeline, detail, and client touchpoint feels considered and effortless.",
+      "imageUrl": "",
+      "order": 3
+    }
+  ]
+}

@@ -18,8 +18,23 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initializeDirectUploadForm() {
-  const form = document.querySelector('.upload-form[data-direct-upload="true"]');
+  const form = document.querySelector('.upload-form');
   if (!form) {
+    return;
+  }
+
+  if (form.dataset.directUpload !== 'true') {
+    if (form.dataset.runtime === 'vercel') {
+      const status = form.querySelector('[data-upload-status]');
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (status) {
+          status.textContent =
+            'Image uploads are disabled until BLOB_READ_WRITE_TOKEN is added in this Vercel project.';
+          status.style.color = 'var(--admin-danger)';
+        }
+      });
+    }
     return;
   }
 

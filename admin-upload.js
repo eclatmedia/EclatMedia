@@ -30,6 +30,7 @@ const ROOT_DIR = __dirname;
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
+const IS_VERCEL = process.env.VERCEL === '1';
 const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
@@ -1588,9 +1589,14 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
               </div>
               <p>Uploads go live immediately on the home page and gallery.</p>
             </div>
+            ${
+              IS_VERCEL && !DIRECT_UPLOADS_ENABLED
+                ? '<div class="flash-banner flash-banner-error">Direct uploads are not configured on this Vercel deployment yet. Add <strong>BLOB_READ_WRITE_TOKEN</strong> in Vercel project settings before uploading images.</div>'
+                : ''
+            }
             <form method="POST" action="/admin/portfolio/upload?csrfToken=${encodeURIComponent(
               csrfToken
-            )}" enctype="multipart/form-data" class="admin-form upload-form" data-direct-upload="${DIRECT_UPLOADS_ENABLED ? 'true' : 'false'}">
+            )}" enctype="multipart/form-data" class="admin-form upload-form" data-direct-upload="${DIRECT_UPLOADS_ENABLED ? 'true' : 'false'}" data-runtime="${IS_VERCEL ? 'vercel' : 'local'}">
               ${renderCsrfInput(csrfToken)}
               <label class="field">
                 <span>Image files</span>
@@ -1598,6 +1604,8 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
                 <small class="field-hint">${
                   DIRECT_UPLOADS_ENABLED
                     ? 'Upload up to 12 images at once. Large files upload directly from your browser to storage.'
+                    : IS_VERCEL
+                      ? 'Uploads are blocked until Vercel Blob is configured for this deployment.'
                     : 'Upload up to 12 images at once from the same source or shoot.'
                 }</small>
               </label>

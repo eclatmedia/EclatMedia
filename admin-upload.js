@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const multer = require('multer');
 const serveStatic = require('serve-static');
+const { handleUpload } = require('@vercel/blob/client');
 const {
   authMiddleware,
   clearAdminSession,
@@ -29,6 +30,7 @@ const ROOT_DIR = __dirname;
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
+const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
 
@@ -255,6 +257,78 @@ app.post('/api/enquiries', async (req, res) => {
   await saveEnquiries(enquiries);
 
   res.status(201).json({ success: true });
+});
+
+app.post('/api/admin/portfolio/upload-token', async (req, res) => {
+  if (!req.auth.isAdmin) {
+    return res.status(403).json({ error: 'Admin sign-in required.' });
+  }
+
+  if (!isValidCsrfRequest(req)) {
+    return res.status(403).json({ error: 'Invalid request token.' });
+  }
+
+  if (!DIRECT_UPLOADS_ENABLED) {
+    return res.status(503).json({ error: 'Direct uploads are not configured on this deployment.' });
+  }
+
+  try {
+    const payload = await handleUpload({
+      request: req,
+      body: req.body,
+      onBeforeGenerateToken: async (pathname) => {
+        if (!isValidImagePathname(pathname)) {
+          throw new Error('Invalid upload path.');
+        }
+
+        return {
+          allowedContentTypes: ['image/*'],
+          maximumSizeInBytes: 50 * 1024 * 1024,
+          addRandomSuffix: false,
+          allowOverwrite: false
+        };
+      }
+    });
+
+    res.json(payload);
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'Unable to start upload.' });
+  }
+});
+
+app.post('/api/admin/portfolio/register', requireAdmin, verifyCsrf, async (req, res) => {
+  const category = normalizeCategory(req.body.category);
+  if (!category) {
+    return res.status(400).json({ error: 'Choose a valid portfolio category.' });
+  }
+
+  const originalname = sanitizeShortText(req.body.originalname);
+  const blob = normalizeUploadedBlob(req.body.blob);
+  if (!originalname || !blob) {
+    return res.status(400).json({ error: 'Uploaded image details are incomplete.' });
+  }
+
+  const images = await loadMetadata();
+  const existingImage = images.find((entry) => entry.storagePath === blob.pathname || entry.imageUrl === blob.url);
+  if (existingImage) {
+    return res.json({ success: true, imageId: existingImage.id });
+  }
+
+  const nextOrder = images.reduce((highest, image) => Math.max(highest, image.order || 0), 0) + 1;
+  images.push({
+    id: createId('asset'),
+    filename: path.basename(blob.pathname),
+    imageUrl: blob.url,
+    storagePath: blob.pathname,
+    originalname,
+    title: createPortfolioTitle(originalname),
+    category,
+    order: nextOrder,
+    createdAt: new Date().toISOString()
+  });
+  await saveMetadata(images);
+
+  res.json({ success: true });
 });
 
 app.get('/gallery', async (req, res) => {
@@ -842,6 +916,28 @@ function normalizeCategory(value) {
 
 function normalizeEnquiryStatus(value) {
   return enquiryStatuses.includes(value) ? value : null;
+}
+
+function isValidImagePathname(value) {
+  return typeof value === 'string' && /^images\/[a-zA-Z0-9._-]+$/.test(value);
+}
+
+function normalizeUploadedBlob(value) {
+  const source = value && typeof value === 'object' ? value : null;
+  if (!source) {
+    return null;
+  }
+
+  const pathname = sanitizeStoragePath(source.pathname);
+  const url = normalizeUrlInput(source.url);
+  if (!pathname || !url || !isValidImagePathname(pathname)) {
+    return null;
+  }
+
+  return {
+    pathname,
+    url
+  };
 }
 
 function ensureArray(value) {
@@ -1494,12 +1590,16 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
             </div>
             <form method="POST" action="/admin/portfolio/upload?csrfToken=${encodeURIComponent(
               csrfToken
-            )}" enctype="multipart/form-data" class="admin-form upload-form">
+            )}" enctype="multipart/form-data" class="admin-form upload-form" data-direct-upload="${DIRECT_UPLOADS_ENABLED ? 'true' : 'false'}">
               ${renderCsrfInput(csrfToken)}
               <label class="field">
                 <span>Image files</span>
                 <input type="file" name="images" accept="image/*" multiple required>
-                <small class="field-hint">Upload up to 12 images at once from the same source or shoot.</small>
+                <small class="field-hint">${
+                  DIRECT_UPLOADS_ENABLED
+                    ? 'Upload up to 12 images at once. Large files upload directly from your browser to storage.'
+                    : 'Upload up to 12 images at once from the same source or shoot.'
+                }</small>
               </label>
               <label class="field">
                 <span>Category</span>
@@ -1510,6 +1610,7 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
               </label>
               <div class="panel-actions">
                 <button class="admin-button" type="submit">Post images</button>
+                <span class="field-hint" data-upload-status aria-live="polite"></span>
               </div>
             </form>
             <div class="portfolio-admin-grid">

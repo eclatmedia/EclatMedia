@@ -272,7 +272,7 @@ function renderPortfolio(portfolio) {
       activeCategory === 'All'
         ? portfolio
         : portfolio.filter((item) => (item.category || 'Other') === activeCategory);
-    const previewItems = matchingItems.slice(0, 5);
+    const visibleItems = matchingItems;
 
     filters.querySelectorAll('.portfolio-filter').forEach((button) => {
       const isActive = button.dataset.category === activeCategory;
@@ -282,7 +282,7 @@ function renderPortfolio(portfolio) {
 
     container.replaceChildren();
 
-    previewItems.forEach((item) => {
+    visibleItems.forEach((item) => {
       const card = createElement('article', 'portfolio-item reveal');
       const media = createElement('div', 'portfolio-media');
       applyViewerData(media, item, `View ${item.title || 'portfolio image'} in full size`);
@@ -316,7 +316,7 @@ function renderPortfolio(portfolio) {
       container.append(card);
     });
 
-    if (!previewItems.length) {
+    if (!visibleItems.length) {
       container.append(
         createElement(
           'p',
@@ -328,16 +328,11 @@ function renderPortfolio(portfolio) {
 
     if (activeCategory === 'All') {
       status.textContent =
-        portfolio.length > previewItems.length
-          ? `Showing ${previewItems.length} featured images from ${portfolio.length} uploaded photographs. Choose a category to narrow the view.`
-          : `Showing all ${portfolio.length} uploaded photographs. Choose a category like Wedding to focus the gallery.`;
+        `Showing all ${portfolio.length} uploaded photographs. Choose a category like Wedding to focus the gallery.`;
       galleryLink.href = '/gallery';
       galleryLink.textContent = 'View All Work';
     } else {
-      status.textContent =
-        matchingItems.length > previewItems.length
-          ? `Showing ${previewItems.length} of ${matchingItems.length} ${activeCategory.toLowerCase()} images.`
-          : `Showing all ${matchingItems.length} ${activeCategory.toLowerCase()} images.`;
+      status.textContent = `Showing all ${matchingItems.length} ${activeCategory.toLowerCase()} images.`;
       galleryLink.href = `/gallery?category=${encodeURIComponent(activeCategory)}`;
       galleryLink.textContent = `View ${activeCategory} Gallery`;
     }
@@ -795,14 +790,40 @@ function normalizePortfolioItems(portfolio) {
     return [];
   }
 
-  return portfolio.filter(
-    (item) =>
-      item &&
-      typeof item === 'object' &&
-      typeof item.imageUrl === 'string' &&
-      item.imageUrl &&
-      typeof item.category === 'string'
-  );
+  return portfolio
+    .map((item, index) => normalizePortfolioItem(item, index))
+    .filter(Boolean);
+}
+
+function normalizePortfolioItem(item, index) {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+
+  const imageUrl = normalizeImageSource(item.imageUrl) || normalizeImageSource(item.fallbackImageUrl);
+  if (!imageUrl) {
+    return null;
+  }
+
+  const fallbackImageUrl = normalizeImageSource(item.fallbackImageUrl);
+  const title = normalizeText(item.title) || `Portfolio Image ${index + 1}`;
+  const category = normalizeText(item.category) || 'Other';
+
+  return {
+    ...item,
+    imageUrl,
+    fallbackImageUrl,
+    title,
+    category
+  };
+}
+
+function normalizeImageSource(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeText(value) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizeTeamMembers(teamMembers) {

@@ -610,7 +610,30 @@ app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, async (req, res) =
 
   const remainingImages = images.filter((entry) => entry.id !== id);
   await saveMetadata(remainingImages);
-  await removeStoredImage(image);
+
+  try {
+    await removeStoredImage(image);
+  } catch (error) {
+    console.error('Failed to remove portfolio image from storage:', error);
+
+    let metadataRestored = false;
+    try {
+      await saveMetadata(images);
+      metadataRestored = true;
+    } catch (restoreError) {
+      console.error('Failed to restore portfolio metadata after delete error:', restoreError);
+    }
+
+    const detail =
+      error && error.message
+        ? ` ${sanitizeLongText(error.message)}`
+        : '';
+    const message = metadataRestored
+      ? `Unable to delete the stored image.${detail}`
+      : 'Unable to delete the stored image, and the portfolio library could not be restored automatically.';
+
+    return redirectToAdmin(res, message, 'error', 'portfolio');
+  }
 
   redirectToAdmin(res, 'Portfolio item removed.', 'success', 'portfolio');
 });
@@ -1078,10 +1101,17 @@ function normalizeUrlInput(value) {
     return '';
   }
 
+  if (isSafeDataImageUrl(trimmed) || isSafeBlobUrl(trimmed)) {
+    return trimmed;
+  }
+
   const withProtocol = /^[a-z]+:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 
   try {
     const url = new URL(withProtocol);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
     return url.toString();
   } catch (error) {
     return '';
@@ -1094,11 +1124,31 @@ function normalizeAssetUrl(value) {
     return '';
   }
 
-  if (trimmed.startsWith('/')) {
-    return /^\/[a-zA-Z0-9/_\-.%]+$/.test(trimmed) ? trimmed : '';
+  if (isSafeRelativeAssetPath(trimmed)) {
+    return trimmed;
   }
 
   return normalizeUrlInput(trimmed);
+}
+
+function isSafeRelativeAssetPath(value) {
+  return typeof value === 'string' && /^[/.][^\s"'<>]*$/.test(value);
+}
+
+function isSafeDataImageUrl(value) {
+  return typeof value === 'string' && /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+$/i.test(value);
+}
+
+function isSafeBlobUrl(value) {
+  if (typeof value !== 'string' || !value.startsWith('blob:')) {
+    return false;
+  }
+
+  try {
+    return new URL(value).protocol === 'blob:';
+  } catch (error) {
+    return false;
+  }
 }
 
 function sanitizeStoragePath(value) {

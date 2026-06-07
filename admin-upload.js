@@ -308,7 +308,11 @@ app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, r
       maximumSizeInBytes: 50 * 1024 * 1024
     });
 
-    res.json({ presignedUrl });
+    res.json({
+      presignedUrl,
+      pathname,
+      imageUrl: createImageProxyUrl(pathname)
+    });
   } catch (error) {
     res.status(400).json({ error: error.message || 'Unable to prepare upload.' });
   }
@@ -1222,6 +1226,11 @@ function sanitizeStoragePath(value) {
 
   const trimmed = value.trim();
   return /^[a-zA-Z0-9/_\-.%]+$/.test(trimmed) ? trimmed : '';
+}
+
+function createImageProxyUrl(pathname) {
+  const filename = path.basename(typeof pathname === 'string' ? pathname : '');
+  return filename ? `/images/${encodeURIComponent(filename)}` : '';
 }
 
 function resolveImageUrl(image) {

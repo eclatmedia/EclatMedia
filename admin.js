@@ -93,7 +93,6 @@ function initializeDirectUploadForm() {
         const uploadResponse = await fetch(presignPayload.presignedUrl, {
           method: 'PUT',
           headers: {
-            'Content-Type': file.type || 'application/octet-stream',
             'x-content-type': file.type || 'application/octet-stream',
             'x-vercel-blob-access': 'public'
           },
@@ -104,8 +103,10 @@ function initializeDirectUploadForm() {
           throw new Error('Unable to upload image to storage.');
         }
 
-        // Extract blob metadata from response
-        const uploadedBlob = await extractBlobMetadata(uploadResponse, pathname);
+        const uploadedBlob = {
+          url: presignPayload.imageUrl || createImageProxyUrl(presignPayload.pathname || pathname),
+          pathname: presignPayload.pathname || pathname
+        };
         if (!uploadedBlob.url || !uploadedBlob.pathname) {
           throw new Error('Unable to retrieve uploaded image details.');
         }
@@ -165,29 +166,9 @@ function createUploadPathname(file, index) {
   return `images/${Date.now()}-${index}-${safeName || 'upload'}`;
 }
 
-async function extractBlobMetadata(response, pathname) {
-  const contentType = response.headers.get('content-type') || '';
-  
-  // Try to parse JSON response from Vercel Blob
-  if (contentType.includes('application/json')) {
-    try {
-      const json = await response.json();
-      if (json.url && json.pathname) {
-        return json;
-      }
-    } catch (e) {
-      // Fall through to construct URL
-    }
-  }
-
-  const filename = pathname.split('/').pop() || 'upload';
-  const proxyUrl = `/images/${encodeURIComponent(filename)}`;
-  const blobUrl = response.headers.get('x-vercel-blob-url') || response.headers.get('x-blobstore-url');
-
-  return {
-    url: blobUrl || proxyUrl,
-    pathname: pathname
-  };
+function createImageProxyUrl(pathname) {
+  const filename = String(pathname || '').split('/').pop() || 'upload';
+  return `/images/${encodeURIComponent(filename)}`;
 }
 
 async function readJsonResponse(response) {

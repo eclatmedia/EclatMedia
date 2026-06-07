@@ -1087,7 +1087,7 @@ function normalizeUploadedBlob(value) {
   }
 
   const pathname = sanitizeStoragePath(source.pathname);
-  const url = normalizeUrlInput(source.url);
+  const url = normalizeAssetUrl(source.url);
   if (!pathname || !url || !isValidImagePathname(pathname)) {
     return null;
   }
@@ -1224,11 +1224,16 @@ function resolveImageUrl(image) {
     return '';
   }
 
+  const fallbackUrl = resolveFallbackImageUrl(image);
+  if (fallbackUrl) {
+    return fallbackUrl;
+  }
+
   if (image.imageUrl) {
     return image.imageUrl;
   }
 
-  return resolveFallbackImageUrl(image);
+  return '';
 }
 
 function resolveFallbackImageUrl(image) {

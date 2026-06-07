@@ -46,6 +46,7 @@ async function main() {
     }
 
     assertFlexiblePortfolioImageWorks(siteContent);
+    assertBrokenBlobImageUsesProxyUrl(siteContent);
     await assertPortfolioWritesFailGracefullyWithoutBlobToken();
     await assertPortfolioDeleteWorks();
     await assertAdminLoginHandlesMissingProductionConfig();
@@ -327,6 +328,21 @@ function assertFlexiblePortfolioImageWorks(siteContent) {
   }
 }
 
+function assertBrokenBlobImageUsesProxyUrl(siteContent) {
+  const fixture = readDeleteFixture();
+  const matchingImage = Array.isArray(siteContent.portfolio)
+    ? siteContent.portfolio.find((item) => item && item.id === fixture.blobProxyImageId)
+    : null;
+
+  if (!matchingImage) {
+    fail('Expected /api/site-content to include the blob proxy image fixture.');
+  }
+
+  if (matchingImage.imageUrl !== fixture.blobProxyExpectedUrl) {
+    fail('Expected blob-backed portfolio images to use the /images proxy URL.');
+  }
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -389,9 +405,13 @@ function createDeleteFixture() {
   const id = `asset-smoke-delete-${Date.now()}`;
   const flexibleImageId = `asset-smoke-flex-${Date.now()}`;
   const flexibleImageUrl = '/images/photo1.jpg?variant=portfolio#hero';
+  const blobProxyImageId = `asset-smoke-proxy-${Date.now()}`;
+  const blobProxyFilename = `smoke-proxy-${Date.now()}.jpg`;
+  const blobProxyExpectedUrl = `/images/${encodeURIComponent(blobProxyFilename)}`;
   const metadata = JSON.parse(metadataBackup);
 
   fs.copyFileSync(sourceImagePath, imagePath);
+  fs.copyFileSync(sourceImagePath, path.join(process.cwd(), 'images', blobProxyFilename));
   metadata.push({
     id,
     filename: path.basename(imagePath),
@@ -410,10 +430,23 @@ function createDeleteFixture() {
     order: metadata.length + 2,
     createdAt: new Date().toISOString()
   });
+  metadata.push({
+    id: blobProxyImageId,
+    filename: blobProxyFilename,
+    imageUrl: `https://public.blob.vercel-storage.com/images/${blobProxyFilename}`,
+    storagePath: `images/${blobProxyFilename}`,
+    originalname: blobProxyFilename,
+    title: 'Blob Proxy Image',
+    category: 'Other',
+    order: metadata.length + 3,
+    createdAt: new Date().toISOString()
+  });
   fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
 
   const fixture = {
     id,
+    blobProxyExpectedUrl,
+    blobProxyImageId,
     flexibleImageId,
     flexibleImageUrl,
     imagePath,
@@ -427,6 +460,10 @@ function createDeleteFixture() {
     fs.writeFileSync(metadataPath, metadataBackup, 'utf8');
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
+    }
+    const blobProxyPath = path.join(process.cwd(), 'images', blobProxyFilename);
+    if (fs.existsSync(blobProxyPath)) {
+      fs.unlinkSync(blobProxyPath);
     }
     delete process.env.SMOKE_DELETE_FIXTURE;
   };

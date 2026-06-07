@@ -180,13 +180,12 @@ async function extractBlobMetadata(response, pathname) {
     }
   }
 
-  // Get the URL from response headers (Vercel Blob returns it in headers)
-  const blobUrl = response.headers.get('x-vercel-blob-url') || 
-                  response.headers.get('x-blobstore-url') ||
-                  `https://public.blob.vercel-storage.com/${pathname}`;
+  const filename = pathname.split('/').pop() || 'upload';
+  const proxyUrl = `/images/${encodeURIComponent(filename)}`;
+  const blobUrl = response.headers.get('x-vercel-blob-url') || response.headers.get('x-blobstore-url');
 
   return {
-    url: blobUrl,
+    url: blobUrl || proxyUrl,
     pathname: pathname
   };
 }

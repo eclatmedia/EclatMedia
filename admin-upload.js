@@ -8,6 +8,7 @@ const { issueSignedToken, presignUrl } = require('@vercel/blob');
 const {
   authMiddleware,
   clearAdminSession,
+  getAuthConfigurationError,
   isValidCsrfRequest,
   startAdminSession
 } = require('./auth');
@@ -35,12 +36,16 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_PRODUCTION_RUNTIME = process.env.NODE_ENV === 'production' || IS_VERCEL;
 const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+const AUTH_CONFIGURATION_ERROR = getAuthConfigurationError();
+const ADMIN_CONFIGURATION_ERROR =
+  IS_PRODUCTION_RUNTIME && ADMIN_USER === 'admin' && ADMIN_PASSWORD === 'password'
+    ? 'ADMIN_USER and ADMIN_PASSWORD must be set in production.'
+    : '';
+const ADMIN_RUNTIME_CONFIGURATION_ERROR = [AUTH_CONFIGURATION_ERROR, ADMIN_CONFIGURATION_ERROR]
+  .filter(Boolean)
+  .join(' ');
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
-
-if (IS_PRODUCTION_RUNTIME && ADMIN_USER === 'admin' && ADMIN_PASSWORD === 'password') {
-  throw new Error('ADMIN_USER and ADMIN_PASSWORD must be set in production.');
-}
 
 const defaultSiteContent = {
   settings: {
@@ -268,7 +273,7 @@ app.post('/api/enquiries', async (req, res) => {
   res.status(201).json({ success: true });
 });
 
-app.post('/api/admin/portfolio/upload-url', async (req, res) => {
+app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, res) => {
   if (!req.auth.isAdmin) {
     return res.status(403).json({ error: 'Admin sign-in required.' });
   }
@@ -376,6 +381,16 @@ app.get('/gallery', async (req, res) => {
 });
 
 app.get('/admin/login', (req, res) => {
+  if (ADMIN_RUNTIME_CONFIGURATION_ERROR) {
+    return res.status(503).send(
+      renderAdminLoginPage({
+        csrfToken: '',
+        error: false,
+        configurationError: ADMIN_RUNTIME_CONFIGURATION_ERROR
+      })
+    );
+  }
+
   if (req.auth.isAdmin) {
     return res.redirect('/admin');
   }
@@ -383,12 +398,13 @@ app.get('/admin/login', (req, res) => {
   res.send(
     renderAdminLoginPage({
       csrfToken: req.csrfToken,
-      error: req.query.error === '1'
+      error: req.query.error === '1',
+      configurationError: ''
     })
   );
 });
 
-app.post('/admin/login', verifyCsrf, (req, res) => {
+app.post('/admin/login', ensureAdminConfigured, verifyCsrf, (req, res) => {
   const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
   const password = typeof req.body.password === 'string' ? req.body.password : '';
 
@@ -685,11 +701,39 @@ if (require.main === module) {
 module.exports = app;
 
 function requireAdmin(req, res, next) {
+  if (ADMIN_RUNTIME_CONFIGURATION_ERROR) {
+    return res.status(503).send(
+      renderAdminLoginPage({
+        csrfToken: '',
+        error: false,
+        configurationError: ADMIN_RUNTIME_CONFIGURATION_ERROR
+      })
+    );
+  }
+
   if (req.auth && req.auth.isAdmin) {
     return next();
   }
 
   res.redirect('/admin/login');
+}
+
+function ensureAdminConfigured(req, res, next) {
+  if (!ADMIN_RUNTIME_CONFIGURATION_ERROR) {
+    return next();
+  }
+
+  if (req.path.startsWith('/api/')) {
+    return res.status(503).json({ error: ADMIN_RUNTIME_CONFIGURATION_ERROR });
+  }
+
+  return res.status(503).send(
+    renderAdminLoginPage({
+      csrfToken: '',
+      error: false,
+      configurationError: ADMIN_RUNTIME_CONFIGURATION_ERROR
+    })
+  );
 }
 
 function timingSafeCredentialMatch(actual, expected) {
@@ -1394,7 +1438,7 @@ function renderGalleryPage(images, selectedCategory) {
   `;
 }
 
-function renderAdminLoginPage({ csrfToken, error }) {
+function renderAdminLoginPage({ csrfToken, error, configurationError }) {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -1413,22 +1457,31 @@ function renderAdminLoginPage({ csrfToken, error }) {
             <p>Manage the live site, publish new portfolio work, and keep track of enquiries in one place.</p>
           </div>
           ${
-            error
+            configurationError
+              ? `<div class="flash-banner flash-banner-error">${escapeHtml(
+                  configurationError
+                )}</div>
+                 <p class="field-hint">Add the required admin environment variables in Vercel, redeploy, and then sign in again.</p>`
+              : error
               ? '<div class="flash-banner flash-banner-error" data-flash>Incorrect username or password.</div>'
               : ''
           }
-          <form method="POST" action="/admin/login" class="admin-form">
-            ${renderCsrfInput(csrfToken)}
-            <label class="field">
-              <span>Username</span>
-              <input type="text" name="username" autocomplete="username" required>
-            </label>
-            <label class="field">
-              <span>Password</span>
-              <input type="password" name="password" autocomplete="current-password" required>
-            </label>
-            <button class="admin-button admin-button-block" type="submit">Sign in</button>
-          </form>
+          ${
+            configurationError
+              ? ''
+              : `<form method="POST" action="/admin/login" class="admin-form">
+                  ${renderCsrfInput(csrfToken)}
+                  <label class="field">
+                    <span>Username</span>
+                    <input type="text" name="username" autocomplete="username" required>
+                  </label>
+                  <label class="field">
+                    <span>Password</span>
+                    <input type="password" name="password" autocomplete="current-password" required>
+                  </label>
+                  <button class="admin-button admin-button-block" type="submit">Sign in</button>
+                </form>`
+          }
         </section>
       </main>
       <script src="/admin.js" defer></script>

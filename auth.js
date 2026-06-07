@@ -7,12 +7,22 @@ const CSRF_TTL_SECONDS = 60 * 60 * 12;
 const DEFAULT_AUTH_SECRET = 'change-this-session-secret';
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SESSION_SECRET || DEFAULT_AUTH_SECRET;
 const SECURE_COOKIES = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-
-if (SECURE_COOKIES && AUTH_SECRET === DEFAULT_AUTH_SECRET) {
-  throw new Error('AUTH_SECRET or SESSION_SECRET must be set in production.');
-}
+const AUTH_CONFIGURATION_ERROR =
+  SECURE_COOKIES && AUTH_SECRET === DEFAULT_AUTH_SECRET
+    ? 'AUTH_SECRET or SESSION_SECRET must be set in production.'
+    : '';
 
 function authMiddleware(req, res, next) {
+  if (AUTH_CONFIGURATION_ERROR) {
+    req.auth = {
+      isAdmin: false
+    };
+    req.csrfToken = '';
+    res.locals.csrfToken = '';
+    next();
+    return;
+  }
+
   const cookies = parseCookies(req.headers.cookie || '');
   const session = verifyToken(cookies[SESSION_COOKIE], 'admin-session');
   let csrfToken = cookies[CSRF_COOKIE];
@@ -218,6 +228,11 @@ function safeEqual(left, right) {
 module.exports = {
   authMiddleware,
   clearAdminSession,
+  getAuthConfigurationError,
   isValidCsrfRequest,
   startAdminSession
 };
+
+function getAuthConfigurationError() {
+  return AUTH_CONFIGURATION_ERROR;
+}

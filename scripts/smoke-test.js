@@ -47,6 +47,7 @@ async function main() {
 
     assertFlexiblePortfolioImageWorks(siteContent);
     await assertPortfolioDeleteWorks();
+    await assertAdminLoginHandlesMissingProductionConfig();
 
     settled = true;
     console.log('Smoke test passed.');
@@ -156,6 +157,71 @@ async function assertPortfolioDeleteWorks() {
 
   if (fs.existsSync(fixture.imagePath)) {
     fail('Expected deleted portfolio image file to be removed from disk.');
+  }
+}
+
+async function assertAdminLoginHandlesMissingProductionConfig() {
+  const port = 3101;
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const server = spawn(process.execPath, ['server.js'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PORT: String(port),
+      NODE_ENV: 'production',
+      VERCEL: '1',
+      AUTH_SECRET: '',
+      SESSION_SECRET: '',
+      ADMIN_USER: 'admin',
+      ADMIN_PASSWORD: 'password'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let serverExited = false;
+  let stdout = '';
+  let stderr = '';
+
+  server.stdout.on('data', (chunk) => {
+    stdout += chunk.toString();
+  });
+
+  server.stderr.on('data', (chunk) => {
+    stderr += chunk.toString();
+  });
+
+  server.on('exit', () => {
+    serverExited = true;
+  });
+
+  try {
+    const start = Date.now();
+    while (Date.now() - start < START_TIMEOUT_MS) {
+      try {
+        const response = await fetch(`${baseUrl}/admin/login`, { redirect: 'manual' });
+        if (response.status === 503) {
+          const text = await response.text();
+          if (
+            !text.includes('AUTH_SECRET or SESSION_SECRET must be set in production.') ||
+            !text.includes('ADMIN_USER and ADMIN_PASSWORD must be set in production.')
+          ) {
+            fail('Expected /admin/login to explain the missing production admin configuration.');
+          }
+          return;
+        }
+      } catch (error) {
+        // Server is still starting.
+      }
+
+      await delay(250);
+    }
+
+    fail(`Timed out waiting for misconfigured admin login response.\n${stdout}${stderr}`);
+  } finally {
+    if (!serverExited) {
+      server.kill('SIGTERM');
+      await new Promise((resolve) => server.once('exit', resolve));
+    }
   }
 }
 

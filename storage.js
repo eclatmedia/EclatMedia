@@ -127,6 +127,7 @@ async function readStoredImage(image) {
     if (blob && blob.statusCode === 200 && blob.stream) {
       return {
         kind: 'blob',
+        url: blob.blob?.url || '',
         stream: blob.stream,
         contentType: blob.blob?.contentType || 'application/octet-stream',
         cacheControl: blob.blob?.cacheControl || 'public, max-age=3600'

@@ -11,7 +11,13 @@ const LOCAL_SITE_CONTENT_PATH = path.join(DATA_DIR, 'site-content.json');
 const BLOB_METADATA_PATH = 'data/metadata.json';
 const BLOB_ENQUIRIES_PATH = 'data/enquiries.json';
 const BLOB_SITE_CONTENT_PATH = 'data/site-content.json';
-const BLOB_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+const IS_VERCEL = process.env.VERCEL === '1';
+const BLOB_READ_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+const BLOB_WRITE_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const STORAGE_WRITE_CONFIGURATION_ERROR =
+  IS_VERCEL && !BLOB_WRITE_ENABLED
+    ? 'Storage writes require BLOB_READ_WRITE_TOKEN on this Vercel deployment.'
+    : '';
 
 ensureDirectory(IMAGES_DIR);
 ensureDirectory(DATA_DIR);
@@ -44,36 +50,27 @@ async function storeUploadedImage(file) {
   const safeName = sanitizeFilename(file.originalname);
   const filename = `${Date.now()}-${safeName}`;
 
-  if (BLOB_ENABLED) {
-    try {
-      const blob = await put(`images/${filename}`, file.buffer, {
-        access: 'public',
-        addRandomSuffix: false,
-        allowOverwrite: false,
-        contentType: file.mimetype || 'application/octet-stream'
-      });
+  if (BLOB_WRITE_ENABLED) {
+    const blob = await put(`images/${filename}`, file.buffer, {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: false,
+      contentType: file.mimetype || 'application/octet-stream'
+    });
 
-      // Handle multiple possible URL properties from Vercel Blob
-      const imageUrl = blob.url || blob.publicUrl || `https://blob.vercel-storage.com/${blob.pathname}`;
+    const imageUrl = blob.url || blob.publicUrl || `https://blob.vercel-storage.com/${blob.pathname}`;
 
-      return {
-        filename,
-        imageUrl: imageUrl.toString(),
-        storagePath: blob.pathname || `images/${filename}`
-      };
-    } catch (error) {
-      console.error('Failed to upload to Vercel Blob:', error);
-      // Fallback to local storage if blob upload fails
-      fs.writeFileSync(path.join(IMAGES_DIR, filename), file.buffer);
-      return {
-        filename,
-        imageUrl: `/images/${encodeURIComponent(filename)}`,
-        storagePath: `images/${filename}`
-      };
-    }
+    return {
+      filename,
+      imageUrl: imageUrl.toString(),
+      storagePath: blob.pathname || `images/${filename}`
+    };
   }
 
-  // Local storage
+  if (STORAGE_WRITE_CONFIGURATION_ERROR) {
+    throw new Error(STORAGE_WRITE_CONFIGURATION_ERROR);
+  }
+
   fs.writeFileSync(path.join(IMAGES_DIR, filename), file.buffer);
 
   return {
@@ -88,33 +85,34 @@ async function removeStoredImage(image) {
     return;
   }
 
-  // Try to delete from Vercel Blob first
-  if (BLOB_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
+  if (
+    typeof image.storagePath === 'string' &&
+    image.storagePath.startsWith('images/') &&
+    !BLOB_WRITE_ENABLED &&
+    STORAGE_WRITE_CONFIGURATION_ERROR
+  ) {
+    throw new Error(STORAGE_WRITE_CONFIGURATION_ERROR);
+  }
+
+  if (BLOB_WRITE_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
     try {
       await del(image.storagePath);
-      console.log(`Deleted blob: ${image.storagePath}`);
       return;
     } catch (error) {
-      // BlobNotFoundError is fine (already deleted), other errors should be logged
-      if (error && error.name === 'BlobNotFoundError') {
-        console.log(`Blob already deleted: ${image.storagePath}`);
-      } else {
-        console.error(`Failed to delete blob ${image.storagePath}:`, error);
-        // Don't throw - continue to try local deletion
+      if (!error || error.name !== 'BlobNotFoundError') {
+        throw error;
       }
     }
   }
 
-  // Try to delete local file
+  if (STORAGE_WRITE_CONFIGURATION_ERROR) {
+    throw new Error(STORAGE_WRITE_CONFIGURATION_ERROR);
+  }
+
   if (typeof image.filename === 'string' && image.filename) {
     const localFilePath = path.join(IMAGES_DIR, path.basename(image.filename));
-    try {
-      if (fs.existsSync(localFilePath)) {
-        fs.unlinkSync(localFilePath);
-        console.log(`Deleted local file: ${image.filename}`);
-      }
-    } catch (error) {
-      console.error(`Failed to delete local file ${image.filename}:`, error);
+    if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
     }
   }
 }
@@ -124,8 +122,7 @@ async function readStoredImage(image) {
     return null;
   }
 
-  // Try Vercel Blob first
-  if (BLOB_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
+  if (BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
     const blob = await readBlobImage(image.storagePath);
     if (blob && blob.statusCode === 200 && blob.stream) {
       return {
@@ -137,7 +134,6 @@ async function readStoredImage(image) {
     }
   }
 
-  // Try local file
   if (typeof image.filename === 'string' && localImageExists(image.filename)) {
     return {
       kind: 'local',
@@ -177,28 +173,27 @@ async function readJsonObject(blobPath, localPath, fallback) {
 }
 
 async function saveJson(blobPath, localPath, value) {
-  if (BLOB_ENABLED) {
-    try {
-      await put(blobPath, JSON.stringify(value, null, 2), {
-        access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        contentType: 'application/json'
-      });
-    } catch (error) {
-      console.error(`Failed to save to Blob ${blobPath}:`, error);
-      // Fallback to local storage
-    }
+  if (BLOB_WRITE_ENABLED) {
+    await put(blobPath, JSON.stringify(value, null, 2), {
+      access: 'private',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+      contentType: 'application/json'
+    });
+    return;
   }
 
-  // Always save locally as backup
+  if (STORAGE_WRITE_CONFIGURATION_ERROR) {
+    throw new Error(STORAGE_WRITE_CONFIGURATION_ERROR);
+  }
+
   const tempPath = `${localPath}.tmp`;
   fs.writeFileSync(tempPath, JSON.stringify(value, null, 2), 'utf8');
   fs.renameSync(tempPath, localPath);
 }
 
 async function readBlobJson(blobPath) {
-  if (!BLOB_ENABLED) {
+  if (!BLOB_READ_ENABLED) {
     return undefined;
   }
 
@@ -222,7 +217,7 @@ async function readBlobJson(blobPath) {
 }
 
 async function readBlobImage(blobPath) {
-  if (!BLOB_ENABLED) {
+  if (!BLOB_READ_ENABLED) {
     return null;
   }
 
@@ -299,6 +294,7 @@ function sanitizeFilename(filename) {
 
 module.exports = {
   IMAGES_DIR,
+  STORAGE_WRITE_CONFIGURATION_ERROR,
   loadEnquiries,
   loadMetadata,
   loadSiteContent,

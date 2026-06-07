@@ -14,6 +14,7 @@ const {
 } = require('./auth');
 const {
   IMAGES_DIR,
+  STORAGE_WRITE_CONFIGURATION_ERROR,
   loadEnquiries: loadStoredEnquiries,
   loadMetadata: loadStoredMetadata,
   loadSiteContent: loadStoredSiteContent,
@@ -35,7 +36,7 @@ const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_PRODUCTION_RUNTIME = process.env.NODE_ENV === 'production' || IS_VERCEL;
-const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const AUTH_CONFIGURATION_ERROR = getAuthConfigurationError();
 const ADMIN_CONFIGURATION_ERROR =
   IS_PRODUCTION_RUNTIME && ADMIN_USER === 'admin' && ADMIN_PASSWORD === 'password'
@@ -44,6 +45,7 @@ const ADMIN_CONFIGURATION_ERROR =
 const ADMIN_RUNTIME_CONFIGURATION_ERROR = [AUTH_CONFIGURATION_ERROR, ADMIN_CONFIGURATION_ERROR]
   .filter(Boolean)
   .join(' ');
+const PORTFOLIO_WRITE_CONFIGURATION_ERROR = STORAGE_WRITE_CONFIGURATION_ERROR;
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
 
@@ -324,27 +326,34 @@ app.post('/api/admin/portfolio/register', requireAdmin, verifyCsrf, async (req, 
     return res.status(400).json({ error: 'Uploaded image details are incomplete.' });
   }
 
-  const images = await loadMetadata();
-  const existingImage = images.find((entry) => entry.storagePath === blob.pathname || entry.imageUrl === blob.url);
-  if (existingImage) {
-    return res.json({ success: true, imageId: existingImage.id });
+  try {
+    const images = await loadMetadata();
+    const existingImage = images.find((entry) => entry.storagePath === blob.pathname || entry.imageUrl === blob.url);
+    if (existingImage) {
+      return res.json({ success: true, imageId: existingImage.id });
+    }
+
+    const nextOrder = images.reduce((highest, image) => Math.max(highest, image.order || 0), 0) + 1;
+    images.push({
+      id: createId('asset'),
+      filename: path.basename(blob.pathname),
+      imageUrl: blob.url,
+      storagePath: blob.pathname,
+      originalname,
+      title: createPortfolioTitle(originalname),
+      category,
+      order: nextOrder,
+      createdAt: new Date().toISOString()
+    });
+    await saveMetadata(images);
+
+    res.json({ success: true });
+  } catch (error) {
+    const message = getStorageErrorMessage(error, 'Unable to save uploaded image.');
+    const statusCode =
+      error && error.message === PORTFOLIO_WRITE_CONFIGURATION_ERROR ? 503 : 500;
+    res.status(statusCode).json({ error: message });
   }
-
-  const nextOrder = images.reduce((highest, image) => Math.max(highest, image.order || 0), 0) + 1;
-  images.push({
-    id: createId('asset'),
-    filename: path.basename(blob.pathname),
-    imageUrl: blob.url,
-    storagePath: blob.pathname,
-    originalname,
-    title: createPortfolioTitle(originalname),
-    category,
-    order: nextOrder,
-    createdAt: new Date().toISOString()
-  });
-  await saveMetadata(images);
-
-  res.json({ success: true });
 });
 
 app.get('/images/:filename', async (req, res, next) => {
@@ -579,7 +588,7 @@ app.post(
 
       return redirectToAdmin(
         res,
-        error && error.message ? error.message : 'Unable to upload the selected images.',
+        getStorageErrorMessage(error, 'Unable to upload the selected images.'),
         'error',
         'portfolio'
       );
@@ -611,7 +620,11 @@ app.post('/admin/portfolio/update', requireAdmin, verifyCsrf, async (req, res) =
   image.category = category;
   image.order = coerceOrder(req.body.order, image.order);
 
-  await saveMetadata(images);
+  try {
+    await saveMetadata(images);
+  } catch (error) {
+    return redirectToAdmin(res, getStorageErrorMessage(error, 'Unable to update this portfolio item.'), 'error', 'portfolio');
+  }
   redirectToAdmin(res, 'Portfolio item updated.', 'success', 'portfolio');
 });
 
@@ -625,7 +638,12 @@ app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, async (req, res) =
   }
 
   const remainingImages = images.filter((entry) => entry.id !== id);
-  await saveMetadata(remainingImages);
+
+  try {
+    await saveMetadata(remainingImages);
+  } catch (error) {
+    return redirectToAdmin(res, getStorageErrorMessage(error, 'Unable to update the portfolio library.'), 'error', 'portfolio');
+  }
 
   try {
     await removeStoredImage(image);
@@ -640,12 +658,9 @@ app.post('/admin/portfolio/delete', requireAdmin, verifyCsrf, async (req, res) =
       console.error('Failed to restore portfolio metadata after delete error:', restoreError);
     }
 
-    const detail =
-      error && error.message
-        ? ` ${sanitizeLongText(error.message)}`
-        : '';
+    const detail = getStorageErrorMessage(error, '');
     const message = metadataRestored
-      ? `Unable to delete the stored image.${detail}`
+      ? `Unable to delete the stored image.${detail ? ` ${detail}` : ''}`
       : 'Unable to delete the stored image, and the portfolio library could not be restored automatically.';
 
     return redirectToAdmin(res, message, 'error', 'portfolio');
@@ -1792,7 +1807,7 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
             </div>
             ${
               IS_VERCEL && !DIRECT_UPLOADS_ENABLED
-                ? '<div class="flash-banner flash-banner-error">Direct uploads are not configured on this Vercel deployment yet. Add <strong>BLOB_READ_WRITE_TOKEN</strong> in Vercel project settings before uploading images.</div>'
+                ? '<div class="flash-banner flash-banner-error">Portfolio uploads, edits, and deletes are disabled on this Vercel deployment until <strong>BLOB_READ_WRITE_TOKEN</strong> is added in project settings.</div>'
                 : ''
             }
             <form method="POST" action="/admin/portfolio/upload?csrfToken=${encodeURIComponent(
@@ -2071,17 +2086,26 @@ function renderPortfolioCard(image, csrfToken) {
             <input type="number" name="order" min="1" value="${escapeHtml(image.order)}">
           </label>
           <div class="panel-actions">
-            <button class="admin-button admin-button-small" type="submit">Update item</button>
+            <button class="admin-button admin-button-small" type="submit"${
+              PORTFOLIO_WRITE_CONFIGURATION_ERROR ? ' disabled' : ''
+            }>Update item</button>
           </div>
         </form>
         <form method="POST" action="/admin/portfolio/delete" data-confirm="Delete this portfolio item permanently?">
           ${renderCsrfInput(csrfToken)}
           <input type="hidden" name="id" value="${escapeHtml(image.id)}">
-          <button class="admin-button admin-button-small admin-button-danger" type="submit">Delete item</button>
+          <button class="admin-button admin-button-small admin-button-danger" type="submit"${
+            PORTFOLIO_WRITE_CONFIGURATION_ERROR ? ' disabled' : ''
+          }>Delete item</button>
         </form>
       </div>
     </article>
   `;
+}
+
+function getStorageErrorMessage(error, fallback) {
+  const message = error && error.message ? sanitizeLongText(error.message) : '';
+  return message || fallback;
 }
 
 function renderEnquiryCard(entry, csrfToken) {

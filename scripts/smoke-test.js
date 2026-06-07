@@ -46,6 +46,7 @@ async function main() {
     }
 
     assertFlexiblePortfolioImageWorks(siteContent);
+    await assertPortfolioWritesFailGracefullyWithoutBlobToken();
     await assertPortfolioDeleteWorks();
     await assertAdminLoginHandlesMissingProductionConfig();
 
@@ -225,6 +226,92 @@ async function assertAdminLoginHandlesMissingProductionConfig() {
   }
 }
 
+async function assertPortfolioWritesFailGracefullyWithoutBlobToken() {
+  const port = 3102;
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const server = spawn(process.execPath, ['server.js'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PORT: String(port),
+      NODE_ENV: 'production',
+      VERCEL: '1',
+      BLOB_STORE_ID: 'blob-store-id-only',
+      BLOB_READ_WRITE_TOKEN: '',
+      AUTH_SECRET: 'smoke-auth-secret',
+      ADMIN_USER: 'smoke-admin',
+      ADMIN_PASSWORD: 'smoke-password'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let serverExited = false;
+  let stdout = '';
+  let stderr = '';
+
+  server.stdout.on('data', (chunk) => {
+    stdout += chunk.toString();
+  });
+
+  server.stderr.on('data', (chunk) => {
+    stderr += chunk.toString();
+  });
+
+  server.on('exit', () => {
+    serverExited = true;
+  });
+
+  try {
+    const { csrfToken, authenticatedCookies } = await loginToAdmin({
+      baseUrl,
+      username: 'smoke-admin',
+      password: 'smoke-password'
+    });
+
+    const dashboardResponse = await fetch(`${baseUrl}/admin`, {
+      redirect: 'manual',
+      headers: {
+        cookie: serializeCookies(authenticatedCookies)
+      }
+    });
+    const dashboardHtml = await dashboardResponse.text();
+    if (
+      dashboardResponse.status !== 200 ||
+      !dashboardHtml.includes('Portfolio uploads, edits, and deletes are disabled')
+    ) {
+      fail('Expected /admin to explain that portfolio writes are disabled without BLOB_READ_WRITE_TOKEN.');
+    }
+
+    const fixture = readDeleteFixture();
+    const deleteResponse = await fetch(`${baseUrl}/admin/portfolio/delete`, {
+      method: 'POST',
+      redirect: 'manual',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        cookie: serializeCookies(authenticatedCookies)
+      },
+      body: new URLSearchParams({
+        id: fixture.id,
+        csrfToken
+      })
+    });
+
+    const location = deleteResponse.headers.get('location') || '';
+    const flash = new URL(`http://localhost${location}`).searchParams.get('flash') || '';
+    if (
+      deleteResponse.status !== 302 ||
+      flash !== 'Storage writes require BLOB_READ_WRITE_TOKEN on this Vercel deployment.'
+    ) {
+      fail(`Expected portfolio delete to fail gracefully without a blob write token.\n${stdout}${stderr}`);
+    }
+  } finally {
+    if (!serverExited) {
+      server.kill('SIGTERM');
+      await new Promise((resolve) => server.once('exit', resolve));
+    }
+  }
+}
+
 function assertFlexiblePortfolioImageWorks(siteContent) {
   const fixture = readDeleteFixture();
   const matchingImage = Array.isArray(siteContent.portfolio)
@@ -242,6 +329,56 @@ function assertFlexiblePortfolioImageWorks(siteContent) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function loginToAdmin({ baseUrl, username, password }) {
+  const start = Date.now();
+  while (Date.now() - start < START_TIMEOUT_MS) {
+    try {
+      const response = await fetch(`${baseUrl}/admin/login`, { redirect: 'manual' });
+      if (response.status === 200) {
+        break;
+      }
+    } catch (error) {
+      // Server is still starting.
+    }
+
+    await delay(250);
+  }
+
+  const loginPage = await fetch(`${baseUrl}/admin/login`, { redirect: 'manual' });
+  if (!loginPage.ok) {
+    fail(`Expected /admin/login to return 200, got ${loginPage.status}.`);
+  }
+
+  const loginPageCookies = readSetCookies(loginPage);
+  const csrfToken = getCookieValue(loginPageCookies, 'eclat_admin_csrf');
+  if (!csrfToken) {
+    fail('Expected /admin/login to set a CSRF cookie.');
+  }
+
+  const loginResponse = await fetch(`${baseUrl}/admin/login`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      cookie: serializeCookies(loginPageCookies)
+    },
+    body: new URLSearchParams({
+      username,
+      password,
+      csrfToken
+    })
+  });
+
+  if (loginResponse.status !== 302 || loginResponse.headers.get('location') !== '/admin') {
+    fail(`Expected admin login to redirect to /admin, got ${loginResponse.status}.`);
+  }
+
+  return {
+    csrfToken,
+    authenticatedCookies: [...loginPageCookies, ...readSetCookies(loginResponse)]
+  };
 }
 
 function createDeleteFixture() {

@@ -16,5 +16,34 @@
     "category": "Event",
     "order": 2,
     "createdAt": "2026-05-31T02:37:51.068Z"
+  },
+  {
+    "id": "asset-smoke-delete-1781207144939",
+    "filename": "smoke-delete-1781207144939.jpg",
+    "originalname": "smoke-delete-1781207144939.jpg",
+    "title": "Smoke Delete",
+    "category": "Other",
+    "order": 3,
+    "createdAt": "2026-06-11T19:45:44.940Z"
+  },
+  {
+    "id": "asset-smoke-flex-1781207144939",
+    "imageUrl": "/images/photo1.jpg?variant=portfolio#hero",
+    "originalname": "photo1.jpg",
+    "title": "Flexible Portfolio Image",
+    "category": "Other",
+    "order": 5,
+    "createdAt": "2026-06-11T19:45:44.941Z"
+  },
+  {
+    "id": "asset-smoke-proxy-1781207144939",
+    "filename": "smoke-proxy-1781207144939.jpg",
+    "imageUrl": "https://public.blob.vercel-storage.com/images/smoke-proxy-1781207144939.jpg",
+    "storagePath": "images/smoke-proxy-1781207144939.jpg",
+    "originalname": "smoke-proxy-1781207144939.jpg",
+    "title": "Blob Proxy Image",
+    "category": "Other",
+    "order": 7,
+    "createdAt": "2026-06-11T19:45:44.941Z"
   }
 ]

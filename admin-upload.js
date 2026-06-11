@@ -20,6 +20,7 @@ const {
   loadSiteContent: loadStoredSiteContent,
   localImageExists,
   readStoredImage,
+  resolveStoredImageUrl,
   removeStoredImage,
   saveEnquiries: saveStoredEnquiries,
   saveMetadata: saveStoredMetadata,
@@ -795,7 +796,13 @@ async function loadMetadata() {
         resolveImageUrl(item) &&
         (item.storagePath || item.imageUrl || (item.filename && localImageExists(item.filename)))
     );
-  return sortByOrder(items);
+  const resolvedItems = await Promise.all(
+    items.map(async (item) => ({
+      ...item,
+      imageUrl: (await resolveStoredImageUrl(item)) || item.imageUrl
+    }))
+  );
+  return sortByOrder(resolvedItems);
 }
 
 async function saveMetadata(images) {

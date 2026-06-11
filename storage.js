@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { del, get, put } = require('@vercel/blob');
+const { del, get, head, put } = require('@vercel/blob');
 
 const ROOT_DIR = __dirname;
 const IMAGES_DIR = path.join(ROOT_DIR, 'images');
@@ -120,6 +120,36 @@ async function removeStoredImage(image) {
 async function readStoredImage(image) {
   if (!image || typeof image !== 'object') {
     return null;
+  }
+
+  async function resolveStoredImageUrl(image) {
+    if (!image || typeof image !== 'object') {
+      return '';
+    }
+
+    const fallbackUrl =
+      typeof image.imageUrl === 'string' && image.imageUrl
+        ? image.imageUrl
+        : typeof image.filename === 'string' && image.filename
+          ? `/images/${encodeURIComponent(path.basename(image.filename))}`
+          : '';
+
+    if (!(BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/'))) {
+      return fallbackUrl;
+    }
+
+    try {
+      const blob = await head(image.storagePath, {
+        access: 'public'
+      });
+      return blob && typeof blob.url === 'string' && blob.url ? blob.url : fallbackUrl;
+    } catch (error) {
+      if (error && error.name !== 'BlobNotFoundError') {
+        console.error(`Failed to resolve public URL for ${image.storagePath}:`, error);
+      }
+
+      return fallbackUrl;
+    }
   }
 
   if (BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
@@ -301,6 +331,7 @@ module.exports = {
   loadSiteContent,
   localImageExists,
   readStoredImage,
+  resolveStoredImageUrl,
   removeStoredImage,
   saveEnquiries,
   saveMetadata,

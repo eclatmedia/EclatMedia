@@ -168,7 +168,7 @@ async function resolveStoredImageUrl(image) {
   try {
     const blob = await headBlobWithAccessFallback(image.storagePath, {
       primaryAccess: 'public',
-      fallbackAccess: 'private'
+      fallbackAccess: 'public'
     });
     return blob && typeof blob.url === 'string' && blob.url ? blob.url : fallbackUrl;
   } catch (error) {
@@ -211,7 +211,7 @@ async function readJsonObject(blobPath, localPath, fallback) {
 async function saveJson(blobPath, localPath, value) {
   if (BLOB_WRITE_ENABLED) {
     await putBlobWithAccessFallback(blobPath, JSON.stringify(value, null, 2), {
-      primaryAccess: 'private',
+      primaryAccess: 'public',
       fallbackAccess: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
@@ -236,7 +236,7 @@ async function readBlobJson(blobPath) {
 
   try {
     const blob = await getBlobWithAccessFallback(blobPath, {
-      primaryAccess: 'private',
+      primaryAccess: 'public',
       fallbackAccess: 'public'
     });
     if (!blob || blob.statusCode !== 200 || !blob.stream) {
@@ -262,7 +262,7 @@ async function readBlobImage(blobPath) {
   try {
     const blob = await getBlobWithAccessFallback(blobPath, {
       primaryAccess: 'public',
-      fallbackAccess: 'private',
+      fallbackAccess: 'public',
       useCache: false
     });
     return blob || null;

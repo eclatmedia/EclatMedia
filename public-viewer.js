@@ -27,8 +27,7 @@ function initializePublicViewer() {
     event.preventDefault();
     lastTrigger = trigger;
     openViewer({
-      src: trigger.dataset.viewerSrc,
-      fallbackSrc: trigger.dataset.viewerFallbackSrc || '',
+      sources: collectViewerSources(trigger),
       title: trigger.dataset.viewerTitle || 'Selected image',
       category: trigger.dataset.viewerCategory || 'Portfolio',
       image,
@@ -60,8 +59,7 @@ function initializePublicViewer() {
       event.preventDefault();
       lastTrigger = trigger;
       openViewer({
-        src: trigger.dataset.viewerSrc,
-        fallbackSrc: trigger.dataset.viewerFallbackSrc || '',
+        sources: collectViewerSources(trigger),
         title: trigger.dataset.viewerTitle || 'Selected image',
         category: trigger.dataset.viewerCategory || 'Portfolio',
         image,
@@ -91,8 +89,7 @@ function initializePublicViewer() {
 }
 
 function openViewer({
-  src,
-  fallbackSrc,
+  sources,
   title,
   category,
   image,
@@ -102,20 +99,29 @@ function openViewer({
   viewer,
   closeButton
 }) {
-  if (!src) {
+  const sourceQueue = Array.isArray(sources) ? sources.filter(Boolean) : [];
+  if (!sourceQueue.length) {
     return;
   }
 
   image.onerror = null;
-  if (fallbackSrc && fallbackSrc !== src) {
-    image.onerror = () => {
-      if (image.src !== fallbackSrc) {
-        image.onerror = null;
-        image.src = fallbackSrc;
-      }
-    };
-  }
-  image.src = src;
+  let sourceIndex = 0;
+  image.onload = () => {
+    image.onerror = null;
+    image.onload = null;
+  };
+  image.onerror = () => {
+    sourceIndex += 1;
+    const nextSource = sourceQueue[sourceIndex];
+    if (!nextSource) {
+      image.onerror = null;
+      image.onload = null;
+      return;
+    }
+
+    image.src = nextSource;
+  };
+  image.src = sourceQueue[sourceIndex];
   image.alt = `${title} — enlarged view`;
   categoryNode.textContent = category;
   titleNode.textContent = title;
@@ -138,6 +144,75 @@ function closeViewer(viewer, lastTrigger) {
 
   if (lastTrigger) {
     lastTrigger.focus();
+  }
+}
+
+function collectViewerSources(trigger) {
+  const sources = [];
+  const previewImage = findViewerPreviewImage(trigger);
+
+  pushViewerSource(sources, previewImage?.currentSrc || previewImage?.src || '');
+  pushViewerSource(sources, trigger.dataset.viewerSrc || '');
+  pushViewerSource(sources, trigger.dataset.viewerFallbackSrc || '');
+  pushViewerSource(sources, previewImage?.getAttribute('src') || '');
+
+  return sources;
+}
+
+function findViewerPreviewImage(trigger) {
+  if (!(trigger instanceof Element)) {
+    return null;
+  }
+
+  if (trigger instanceof HTMLImageElement) {
+    return trigger;
+  }
+
+  const directImage = trigger.querySelector('img');
+  if (directImage instanceof HTMLImageElement) {
+    return directImage;
+  }
+
+  const containerSelectors = ['.gallery-card', '.portfolio-item', '.mosaic-cell', '.gallery-card-media'];
+  for (const selector of containerSelectors) {
+    const container = trigger.closest(selector);
+    if (!container) {
+      continue;
+    }
+
+    const containerImage = container.querySelector('img');
+    if (containerImage instanceof HTMLImageElement) {
+      return containerImage;
+    }
+  }
+
+  const siblingImage = trigger.parentElement?.querySelector('img');
+  return siblingImage instanceof HTMLImageElement ? siblingImage : null;
+}
+
+function pushViewerSource(sources, value) {
+  const normalizedValue = normalizeViewerSource(value);
+  if (!normalizedValue || sources.includes(normalizedValue)) {
+    return;
+  }
+
+  sources.push(normalizedValue);
+}
+
+function normalizeViewerSource(value) {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  try {
+    return new URL(trimmed, window.location.href).toString();
+  } catch (error) {
+    return trimmed;
   }
 }
 

@@ -122,36 +122,6 @@ async function readStoredImage(image) {
     return null;
   }
 
-  async function resolveStoredImageUrl(image) {
-    if (!image || typeof image !== 'object') {
-      return '';
-    }
-
-    const fallbackUrl =
-      typeof image.imageUrl === 'string' && image.imageUrl
-        ? image.imageUrl
-        : typeof image.filename === 'string' && image.filename
-          ? `/images/${encodeURIComponent(path.basename(image.filename))}`
-          : '';
-
-    if (!(BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/'))) {
-      return fallbackUrl;
-    }
-
-    try {
-      const blob = await head(image.storagePath, {
-        access: 'public'
-      });
-      return blob && typeof blob.url === 'string' && blob.url ? blob.url : fallbackUrl;
-    } catch (error) {
-      if (error && error.name !== 'BlobNotFoundError') {
-        console.error(`Failed to resolve public URL for ${image.storagePath}:`, error);
-      }
-
-      return fallbackUrl;
-    }
-  }
-
   if (BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/')) {
     const blob = await readBlobImage(image.storagePath);
     if (blob && blob.statusCode === 200 && blob.stream) {
@@ -173,6 +143,36 @@ async function readStoredImage(image) {
   }
 
   return null;
+}
+
+async function resolveStoredImageUrl(image) {
+  if (!image || typeof image !== 'object') {
+    return '';
+  }
+
+  const fallbackUrl =
+    typeof image.imageUrl === 'string' && image.imageUrl
+      ? image.imageUrl
+      : typeof image.filename === 'string' && image.filename
+        ? `/images/${encodeURIComponent(path.basename(image.filename))}`
+        : '';
+
+  if (!(BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/'))) {
+    return fallbackUrl;
+  }
+
+  try {
+    const blob = await head(image.storagePath, {
+      access: 'public'
+    });
+    return blob && typeof blob.url === 'string' && blob.url ? blob.url : fallbackUrl;
+  } catch (error) {
+    if (error && error.name !== 'BlobNotFoundError') {
+      console.error(`Failed to resolve public URL for ${image.storagePath}:`, error);
+    }
+
+    return fallbackUrl;
+  }
 }
 
 function localImageExists(filename) {

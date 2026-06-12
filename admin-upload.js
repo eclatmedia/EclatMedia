@@ -4,7 +4,6 @@ const path = require('path');
 const { Readable } = require('stream');
 const multer = require('multer');
 const serveStatic = require('serve-static');
-const { issueSignedToken, presignUrl } = require('@vercel/blob');
 const {
   authMiddleware,
   clearAdminSession,
@@ -277,88 +276,15 @@ app.post('/api/enquiries', async (req, res) => {
 });
 
 app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, res) => {
-  if (!req.auth.isAdmin) {
-    return res.status(403).json({ error: 'Admin sign-in required.' });
-  }
-
-  if (!isValidCsrfRequest(req)) {
-    return res.status(403).json({ error: 'Invalid request token.' });
-  }
-
-  if (!DIRECT_UPLOADS_ENABLED) {
-    return res.status(503).json({ error: 'Direct uploads are not configured on this deployment.' });
-  }
-
-  try {
-    const pathname = sanitizeStoragePath(req.body.pathname);
-    const contentType = normalizeContentType(req.body.contentType);
-    if (!isValidImagePathname(pathname)) {
-      return res.status(400).json({ error: 'Invalid upload path.' });
-    }
-
-    const signedToken = await issueSignedToken({
-      pathname,
-      operations: ['put']
-    });
-
-    const { presignedUrl } = await presignUrl(signedToken, {
-      operation: 'put',
-      pathname,
-      access: 'public',
-      contentType,
-      maximumSizeInBytes: 50 * 1024 * 1024
-    });
-
-    res.json({
-      presignedUrl,
-      pathname,
-      imageUrl: createPublicBlobUrl(presignedUrl)
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message || 'Unable to prepare upload.' });
-  }
+  res.status(410).json({
+    error: 'Portfolio uploads now run through the server. Refresh the admin page and upload again.'
+  });
 });
 
 app.post('/api/admin/portfolio/register', requireAdmin, verifyCsrf, async (req, res) => {
-  const category = normalizeCategory(req.body.category);
-  if (!category) {
-    return res.status(400).json({ error: 'Choose a valid portfolio category.' });
-  }
-
-  const originalname = sanitizeShortText(req.body.originalname);
-  const blob = normalizeUploadedBlob(req.body.blob);
-  if (!originalname || !blob) {
-    return res.status(400).json({ error: 'Uploaded image details are incomplete.' });
-  }
-
-  try {
-    const images = await loadMetadata();
-    const existingImage = images.find((entry) => entry.storagePath === blob.pathname || entry.imageUrl === blob.url);
-    if (existingImage) {
-      return res.json({ success: true, imageId: existingImage.id });
-    }
-
-    const nextOrder = images.reduce((highest, image) => Math.max(highest, image.order || 0), 0) + 1;
-    images.push({
-      id: createId('asset'),
-      filename: path.basename(blob.pathname),
-      imageUrl: blob.url,
-      storagePath: blob.pathname,
-      originalname,
-      title: createPortfolioTitle(originalname),
-      category,
-      order: nextOrder,
-      createdAt: new Date().toISOString()
-    });
-    await saveMetadata(images);
-
-    res.json({ success: true });
-  } catch (error) {
-    const message = getStorageErrorMessage(error, 'Unable to save uploaded image.');
-    const statusCode =
-      error && error.message === PORTFOLIO_WRITE_CONFIGURATION_ERROR ? 503 : 500;
-    res.status(statusCode).json({ error: message });
-  }
+  res.status(410).json({
+    error: 'Portfolio uploads now run through the server. Refresh the admin page and upload again.'
+  });
 });
 
 app.get('/images/:filename', async (req, res, next) => {
@@ -1083,37 +1009,6 @@ function normalizeEnquiryStatus(value) {
   return enquiryStatuses.includes(value) ? value : null;
 }
 
-function isValidImagePathname(value) {
-  return typeof value === 'string' && /^images\/[a-zA-Z0-9._-]+$/.test(value);
-}
-
-function normalizeContentType(value) {
-  if (typeof value !== 'string') {
-    return 'application/octet-stream';
-  }
-
-  const trimmed = value.trim().toLowerCase();
-  return /^image\/[a-z0-9.+-]+$/.test(trimmed) ? trimmed : 'application/octet-stream';
-}
-
-function normalizeUploadedBlob(value) {
-  const source = value && typeof value === 'object' ? value : null;
-  if (!source) {
-    return null;
-  }
-
-  const pathname = sanitizeStoragePath(source.pathname);
-  const url = normalizeAssetUrl(source.url);
-  if (!pathname || !url || !isValidImagePathname(pathname)) {
-    return null;
-  }
-
-  return {
-    pathname,
-    url
-  };
-}
-
 function ensureArray(value) {
   if (Array.isArray(value)) {
     return value;
@@ -1238,21 +1133,6 @@ function sanitizeStoragePath(value) {
 function createImageProxyUrl(pathname) {
   const filename = path.basename(typeof pathname === 'string' ? pathname : '');
   return filename ? `/images/${encodeURIComponent(filename)}` : '';
-}
-
-function createPublicBlobUrl(value) {
-  if (typeof value !== 'string' || !value) {
-    return '';
-  }
-
-  try {
-    const url = new URL(value);
-    url.search = '';
-    url.hash = '';
-    return url.toString();
-  } catch (error) {
-    return '';
-  }
 }
 
 function resolveImageUrl(image) {

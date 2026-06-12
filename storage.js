@@ -176,7 +176,7 @@ async function readJsonObject(blobPath, localPath, fallback) {
 async function saveJson(blobPath, localPath, value) {
   if (BLOB_WRITE_ENABLED) {
     await put(blobPath, JSON.stringify(value, null, 2), {
-      access: 'private',
+      access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json'
@@ -200,7 +200,7 @@ async function readBlobJson(blobPath) {
 
   try {
     const blob = await get(blobPath, {
-      access: 'private'
+      access: 'public'
     });
     if (!blob || blob.statusCode !== 200 || !blob.stream) {
       return undefined;
@@ -226,24 +226,10 @@ async function readBlobImage(blobPath) {
     const publicBlob = await get(blobPath, {
       access: 'public'
     });
-    if (publicBlob) {
-      return publicBlob;
-    }
+    return publicBlob || null;
   } catch (error) {
     if (error && error.name !== 'BlobNotFoundError') {
       console.error(`Failed to read public blob ${blobPath}:`, error);
-    }
-  }
-
-  try {
-    const privateBlob = await get(blobPath, {
-      access: 'private',
-      useCache: false
-    });
-    return privateBlob || null;
-  } catch (error) {
-    if (error && error.name !== 'BlobNotFoundError') {
-      console.error(`Failed to read private blob ${blobPath}:`, error);
     }
 
     return null;

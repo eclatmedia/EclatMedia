@@ -335,6 +335,13 @@ function shouldRetryBlobAccess(error, attemptedAccess, retryAccess) {
   }
 
   const message = error.message.toLowerCase();
+  const expectedStoreAccess =
+    message.includes('on a public store') ? 'public' : message.includes('on a private store') ? 'private' : '';
+
+  if (expectedStoreAccess) {
+    return expectedStoreAccess === retryAccess && expectedStoreAccess !== attemptedAccess;
+  }
+
   return (
     message.includes(`cannot use ${attemptedAccess} access`) &&
     message.includes(`configured with ${retryAccess} access`)

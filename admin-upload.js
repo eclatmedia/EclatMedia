@@ -1848,14 +1848,14 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
             }
             <form method="POST" action="/admin/portfolio/upload?csrfToken=${encodeURIComponent(
               csrfToken
-            )}" enctype="multipart/form-data" class="admin-form upload-form" data-direct-upload="${DIRECT_UPLOADS_ENABLED ? 'true' : 'false'}" data-runtime="${IS_VERCEL ? 'vercel' : 'local'}">
+            )}" enctype="multipart/form-data" class="admin-form upload-form">
               ${renderCsrfInput(csrfToken)}
               <label class="field">
                 <span>Image files</span>
                 <input type="file" name="images" accept="image/*" multiple required>
                 <small class="field-hint">${
                   DIRECT_UPLOADS_ENABLED
-                    ? 'Upload up to 12 images at once. Large files upload directly from your browser to storage.'
+                    ? 'Upload up to 12 images at once. Files are uploaded on the server and saved to public Blob storage.'
                     : IS_VERCEL
                       ? 'Uploads are blocked until Vercel Blob is configured for this deployment.'
                     : 'Upload up to 12 images at once from the same source or shoot.'

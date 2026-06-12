@@ -166,8 +166,9 @@ async function resolveStoredImageUrl(image) {
   }
 
   try {
-    const blob = await head(image.storagePath, {
-      access: 'public'
+    const blob = await headBlobWithAccessFallback(image.storagePath, {
+      primaryAccess: 'public',
+      fallbackAccess: 'private'
     });
     return blob && typeof blob.url === 'string' && blob.url ? blob.url : fallbackUrl;
   } catch (error) {
@@ -209,8 +210,9 @@ async function readJsonObject(blobPath, localPath, fallback) {
 
 async function saveJson(blobPath, localPath, value) {
   if (BLOB_WRITE_ENABLED) {
-    await put(blobPath, JSON.stringify(value, null, 2), {
-      access: 'private',
+    await putBlobWithAccessFallback(blobPath, JSON.stringify(value, null, 2), {
+      primaryAccess: 'private',
+      fallbackAccess: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json'
@@ -233,8 +235,9 @@ async function readBlobJson(blobPath) {
   }
 
   try {
-    const blob = await get(blobPath, {
-      access: 'private'
+    const blob = await getBlobWithAccessFallback(blobPath, {
+      primaryAccess: 'private',
+      fallbackAccess: 'public'
     });
     if (!blob || blob.statusCode !== 200 || !blob.stream) {
       return undefined;
@@ -257,31 +260,85 @@ async function readBlobImage(blobPath) {
   }
 
   try {
-    const publicBlob = await get(blobPath, {
-      access: 'public'
-    });
-    if (publicBlob) {
-      return publicBlob;
-    }
-  } catch (error) {
-    if (error && error.name !== 'BlobNotFoundError') {
-      console.error(`Failed to read public blob ${blobPath}:`, error);
-    }
-  }
-
-  try {
-    const privateBlob = await get(blobPath, {
-      access: 'private',
+    const blob = await getBlobWithAccessFallback(blobPath, {
+      primaryAccess: 'public',
+      fallbackAccess: 'private',
       useCache: false
     });
-    return privateBlob || null;
+    return blob || null;
   } catch (error) {
     if (error && error.name !== 'BlobNotFoundError') {
-      console.error(`Failed to read private blob ${blobPath}:`, error);
+      console.error(`Failed to read blob ${blobPath}:`, error);
     }
 
     return null;
   }
+}
+
+async function getBlobWithAccessFallback(blobPath, { primaryAccess, fallbackAccess, ...options }) {
+  try {
+    return await get(blobPath, {
+      access: primaryAccess,
+      ...options
+    });
+  } catch (error) {
+    if (!shouldRetryBlobAccess(error, primaryAccess, fallbackAccess)) {
+      throw error;
+    }
+  }
+
+  return get(blobPath, {
+    access: fallbackAccess,
+    ...options
+  });
+}
+
+async function putBlobWithAccessFallback(blobPath, body, { primaryAccess, fallbackAccess, ...options }) {
+  try {
+    return await put(blobPath, body, {
+      access: primaryAccess,
+      ...options
+    });
+  } catch (error) {
+    if (!shouldRetryBlobAccess(error, primaryAccess, fallbackAccess)) {
+      throw error;
+    }
+  }
+
+  return put(blobPath, body, {
+    access: fallbackAccess,
+    ...options
+  });
+}
+
+async function headBlobWithAccessFallback(blobPath, { primaryAccess, fallbackAccess, ...options }) {
+  try {
+    return await head(blobPath, {
+      access: primaryAccess,
+      ...options
+    });
+  } catch (error) {
+    if (!shouldRetryBlobAccess(error, primaryAccess, fallbackAccess)) {
+      throw error;
+    }
+  }
+
+  return head(blobPath, {
+    access: fallbackAccess,
+    ...options
+  });
+}
+
+function shouldRetryBlobAccess(error, attemptedAccess, retryAccess) {
+  if (!error || typeof error.message !== 'string') {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes(`cannot use ${attemptedAccess} access`) &&
+    message.includes(`configured with ${retryAccess} access`)
+  );
 }
 
 function readLocalJsonArray(filePath, fallback) {

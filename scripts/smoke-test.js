@@ -46,7 +46,7 @@ async function main() {
     }
 
     assertFlexiblePortfolioImageWorks(siteContent);
-    assertBrokenBlobImageUsesProxyUrl(siteContent);
+    assertPublicBlobImageUrlIsPreserved(siteContent);
     await assertPortfolioWritesFailGracefullyWithoutBlobToken();
     await assertPortfolioDeleteWorks();
     await assertAdminLoginHandlesMissingProductionConfig();
@@ -328,7 +328,7 @@ function assertFlexiblePortfolioImageWorks(siteContent) {
   }
 }
 
-function assertBrokenBlobImageUsesProxyUrl(siteContent) {
+function assertPublicBlobImageUrlIsPreserved(siteContent) {
   const fixture = readDeleteFixture();
   const matchingImage = Array.isArray(siteContent.portfolio)
     ? siteContent.portfolio.find((item) => item && item.id === fixture.blobProxyImageId)
@@ -338,8 +338,8 @@ function assertBrokenBlobImageUsesProxyUrl(siteContent) {
     fail('Expected /api/site-content to include the blob proxy image fixture.');
   }
 
-  if (matchingImage.imageUrl !== fixture.blobProxyExpectedUrl) {
-    fail('Expected blob-backed portfolio images to use the /images proxy URL.');
+  if (matchingImage.imageUrl !== fixture.blobPublicUrl) {
+    fail('Expected blob-backed portfolio images to keep their public blob URL.');
   }
 }
 
@@ -407,7 +407,7 @@ function createDeleteFixture() {
   const flexibleImageUrl = '/images/photo1.jpg?variant=portfolio#hero';
   const blobProxyImageId = `asset-smoke-proxy-${Date.now()}`;
   const blobProxyFilename = `smoke-proxy-${Date.now()}.jpg`;
-  const blobProxyExpectedUrl = `/images/${encodeURIComponent(blobProxyFilename)}`;
+  const blobPublicUrl = `https://public.blob.vercel-storage.com/images/${blobProxyFilename}`;
   const metadata = JSON.parse(metadataBackup);
 
   fs.copyFileSync(sourceImagePath, imagePath);
@@ -433,7 +433,7 @@ function createDeleteFixture() {
   metadata.push({
     id: blobProxyImageId,
     filename: blobProxyFilename,
-    imageUrl: `https://public.blob.vercel-storage.com/images/${blobProxyFilename}`,
+    imageUrl: blobPublicUrl,
     storagePath: `images/${blobProxyFilename}`,
     originalname: blobProxyFilename,
     title: 'Blob Proxy Image',
@@ -445,7 +445,7 @@ function createDeleteFixture() {
 
   const fixture = {
     id,
-    blobProxyExpectedUrl,
+    blobPublicUrl,
     blobProxyImageId,
     flexibleImageId,
     flexibleImageUrl,

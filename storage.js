@@ -150,15 +150,19 @@ async function resolveStoredImageUrl(image) {
     return '';
   }
 
+  const publicUrl = typeof image.imageUrl === 'string' ? image.imageUrl : '';
   const fallbackUrl =
-    typeof image.imageUrl === 'string' && image.imageUrl
-      ? image.imageUrl
-      : typeof image.filename === 'string' && image.filename
-        ? `/images/${encodeURIComponent(path.basename(image.filename))}`
-        : '';
+    publicUrl ||
+    (typeof image.filename === 'string' && image.filename
+      ? `/images/${encodeURIComponent(path.basename(image.filename))}`
+      : '');
 
   if (!(BLOB_READ_ENABLED && typeof image.storagePath === 'string' && image.storagePath.startsWith('images/'))) {
     return fallbackUrl;
+  }
+
+  if (publicUrl) {
+    return publicUrl;
   }
 
   try {

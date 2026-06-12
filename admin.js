@@ -103,8 +103,13 @@ function initializeDirectUploadForm() {
           throw new Error('Unable to upload image to storage.');
         }
 
+        const uploadedBlobUrl =
+          createPublicBlobUrl(uploadResponse.url) ||
+          createPublicBlobUrl(presignPayload.imageUrl) ||
+          createPublicBlobUrl(presignPayload.presignedUrl) ||
+          createImageProxyUrl(presignPayload.pathname || pathname);
         const uploadedBlob = {
-          url: presignPayload.imageUrl || createImageProxyUrl(presignPayload.pathname || pathname),
+          url: uploadedBlobUrl,
           pathname: presignPayload.pathname || pathname
         };
         if (!uploadedBlob.url || !uploadedBlob.pathname) {
@@ -169,6 +174,21 @@ function createUploadPathname(file, index) {
 function createImageProxyUrl(pathname) {
   const filename = String(pathname || '').split('/').pop() || 'upload';
   return `/images/${encodeURIComponent(filename)}`;
+}
+
+function createPublicBlobUrl(value) {
+  if (typeof value !== 'string' || !value) {
+    return '';
+  }
+
+  try {
+    const url = new URL(value);
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch (error) {
+    return '';
+  }
 }
 
 async function readJsonResponse(response) {

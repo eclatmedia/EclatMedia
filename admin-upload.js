@@ -312,7 +312,7 @@ app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, r
     res.json({
       presignedUrl,
       pathname,
-      imageUrl: createImageProxyUrl(pathname)
+      imageUrl: createPublicBlobUrl(presignedUrl)
     });
   } catch (error) {
     res.status(400).json({ error: error.message || 'Unable to prepare upload.' });
@@ -1240,21 +1240,31 @@ function createImageProxyUrl(pathname) {
   return filename ? `/images/${encodeURIComponent(filename)}` : '';
 }
 
-function resolveImageUrl(image) {
-  if (!image || typeof image !== 'object') {
+function createPublicBlobUrl(value) {
+  if (typeof value !== 'string' || !value) {
     return '';
   }
 
-  const fallbackUrl = resolveFallbackImageUrl(image);
-  if (fallbackUrl) {
-    return fallbackUrl;
+  try {
+    const url = new URL(value);
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch (error) {
+    return '';
+  }
+}
+
+function resolveImageUrl(image) {
+  if (!image || typeof image !== 'object') {
+    return '';
   }
 
   if (image.imageUrl) {
     return image.imageUrl;
   }
 
-  return '';
+  return resolveFallbackImageUrl(image);
 }
 
 function resolveFallbackImageUrl(image) {

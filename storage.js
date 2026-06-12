@@ -176,7 +176,7 @@ async function readJsonObject(blobPath, localPath, fallback) {
 async function saveJson(blobPath, localPath, value) {
   if (BLOB_WRITE_ENABLED) {
     await put(blobPath, JSON.stringify(value, null, 2), {
-      access: 'private',
+      access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
       contentType: 'application/json'
@@ -200,7 +200,7 @@ async function readBlobJson(blobPath) {
 
   try {
     const blob = await get(blobPath, {
-      access: 'private'
+      access: 'public'
     });
     if (!blob || blob.statusCode !== 200 || !blob.stream) {
       return undefined;

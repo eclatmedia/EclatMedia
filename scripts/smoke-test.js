@@ -47,6 +47,7 @@ async function main() {
 
     assertFlexiblePortfolioImageWorks(siteContent);
     assertPublicBlobImageUrlIsPreserved(siteContent);
+    await assertPortfolioImageProxyServesImage();
     await assertPortfolioWritesFailGracefullyWithoutBlobToken();
     await assertPortfolioDeleteWorks();
     await assertAdminLoginHandlesMissingProductionConfig();
@@ -340,6 +341,22 @@ function assertPublicBlobImageUrlIsPreserved(siteContent) {
 
   if (matchingImage.imageUrl !== fixture.blobProxyUrl) {
     fail('Expected blob-backed portfolio images to use the local image proxy URL.');
+  }
+}
+
+async function assertPortfolioImageProxyServesImage() {
+  const fixture = readDeleteFixture();
+  const response = await fetch(`${BASE_URL}${fixture.blobProxyUrl}`, {
+    redirect: 'manual'
+  });
+
+  if (response.status !== 200) {
+    fail(`Expected ${fixture.blobProxyUrl} to serve an image, got ${response.status}.`);
+  }
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.startsWith('image/')) {
+    fail(`Expected ${fixture.blobProxyUrl} to return an image content type, got "${contentType}".`);
   }
 }
 

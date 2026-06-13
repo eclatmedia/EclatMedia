@@ -422,14 +422,19 @@ app.get('/images/:filename', async (req, res, next) => {
       return res.sendFile(storedImage.filePath);
     }
 
+    if (storedImage.stream) {
+      res.setHeader('Content-Type', storedImage.contentType);
+      res.setHeader('Cache-Control', storedImage.cacheControl);
+      Readable.fromWeb(storedImage.stream).pipe(res);
+      return;
+    }
+
     if (storedImage.url) {
       res.setHeader('Cache-Control', storedImage.cacheControl);
       return res.redirect(storedImage.url);
     }
 
-    res.setHeader('Content-Type', storedImage.contentType);
-    res.setHeader('Cache-Control', storedImage.cacheControl);
-    Readable.fromWeb(storedImage.stream).pipe(res);
+    return res.status(404).end();
   } catch (error) {
     next(error);
   }

@@ -339,8 +339,12 @@ function assertPublicBlobImageUrlIsPreserved(siteContent) {
     fail('Expected /api/site-content to include the blob proxy image fixture.');
   }
 
-  if (matchingImage.imageUrl !== fixture.blobProxyUrl) {
-    fail('Expected blob-backed portfolio images to use the local image proxy URL.');
+  if (matchingImage.imageUrl !== fixture.blobPublicUrl) {
+    fail('Expected blob-backed portfolio images to keep the public blob URL as the primary image source.');
+  }
+
+  if (matchingImage.fallbackImageUrl !== fixture.blobProxyUrl) {
+    fail('Expected blob-backed portfolio images to expose the local image proxy URL as a fallback source.');
   }
 }
 

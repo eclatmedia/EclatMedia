@@ -1259,6 +1259,10 @@ function resolveImageUrl(image) {
     return '';
   }
 
+  if (isPrimaryRemoteAssetUrl(image.imageUrl)) {
+    return image.imageUrl;
+  }
+
   const proxiedImageUrl = resolveFallbackImageUrl(image);
   if (proxiedImageUrl) {
     return proxiedImageUrl;
@@ -1269,6 +1273,23 @@ function resolveImageUrl(image) {
   }
 
   return '';
+}
+
+function isPrimaryRemoteAssetUrl(value) {
+  if (typeof value !== 'string' || !value) {
+    return false;
+  }
+
+  if (isSafeDataImageUrl(value) || isSafeBlobUrl(value)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (error) {
+    return false;
+  }
 }
 
 function resolveFallbackImageUrl(image) {

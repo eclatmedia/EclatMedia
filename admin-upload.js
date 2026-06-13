@@ -1140,11 +1140,16 @@ function resolveImageUrl(image) {
     return '';
   }
 
+  const proxiedImageUrl = resolveFallbackImageUrl(image);
+  if (proxiedImageUrl) {
+    return proxiedImageUrl;
+  }
+
   if (image.imageUrl) {
     return image.imageUrl;
   }
 
-  return resolveFallbackImageUrl(image);
+  return '';
 }
 
 function resolveFallbackImageUrl(image) {

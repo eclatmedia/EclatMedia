@@ -45,5 +45,63 @@
     "category": "Other",
     "order": 7,
     "createdAt": "2026-06-11T19:45:44.941Z"
+  },
+  {
+    "id": "asset-smoke-delete-1781362048553",
+    "filename": "smoke-delete-1781362048549.jpg",
+    "originalname": "smoke-delete-1781362048549.jpg",
+    "title": "Smoke Delete",
+    "category": "Other",
+    "order": 6,
+    "createdAt": "2026-06-13T14:47:28.588Z"
+  },
+  {
+    "id": "asset-smoke-flex-1781362048553",
+    "imageUrl": "/images/photo1.jpg?variant=portfolio#hero",
+    "originalname": "photo1.jpg",
+    "title": "Flexible Portfolio Image",
+    "category": "Other",
+    "order": 8,
+    "createdAt": "2026-06-13T14:47:28.589Z"
+  },
+  {
+    "id": "asset-smoke-proxy-1781362048553",
+    "filename": "smoke-proxy-1781362048553.jpg",
+    "imageUrl": "https://public.blob.vercel-storage.com/images/smoke-proxy-1781362048553.jpg",
+    "storagePath": "images/smoke-proxy-1781362048553.jpg",
+    "originalname": "smoke-proxy-1781362048553.jpg",
+    "title": "Blob Proxy Image",
+    "category": "Other",
+    "order": 10,
+    "createdAt": "2026-06-13T14:47:28.589Z"
+  },
+  {
+    "id": "asset-smoke-delete-1781362069947",
+    "filename": "smoke-delete-1781362069947.jpg",
+    "originalname": "smoke-delete-1781362069947.jpg",
+    "title": "Smoke Delete",
+    "category": "Other",
+    "order": 9,
+    "createdAt": "2026-06-13T14:47:49.949Z"
+  },
+  {
+    "id": "asset-smoke-flex-1781362069947",
+    "imageUrl": "/images/photo1.jpg?variant=portfolio#hero",
+    "originalname": "photo1.jpg",
+    "title": "Flexible Portfolio Image",
+    "category": "Other",
+    "order": 11,
+    "createdAt": "2026-06-13T14:47:49.949Z"
+  },
+  {
+    "id": "asset-smoke-proxy-1781362069947",
+    "filename": "smoke-proxy-1781362069947.jpg",
+    "imageUrl": "https://public.blob.vercel-storage.com/images/smoke-proxy-1781362069947.jpg",
+    "storagePath": "images/smoke-proxy-1781362069947.jpg",
+    "originalname": "smoke-proxy-1781362069947.jpg",
+    "title": "Blob Proxy Image",
+    "category": "Other",
+    "order": 13,
+    "createdAt": "2026-06-13T14:47:49.950Z"
   }
 ]

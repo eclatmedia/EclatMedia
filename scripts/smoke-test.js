@@ -338,8 +338,8 @@ function assertPublicBlobImageUrlIsPreserved(siteContent) {
     fail('Expected /api/site-content to include the blob proxy image fixture.');
   }
 
-  if (matchingImage.imageUrl !== fixture.blobPublicUrl) {
-    fail('Expected blob-backed portfolio images to keep their public blob URL.');
+  if (matchingImage.imageUrl !== fixture.blobProxyUrl) {
+    fail('Expected blob-backed portfolio images to use the local image proxy URL.');
   }
 }
 
@@ -408,6 +408,7 @@ function createDeleteFixture() {
   const blobProxyImageId = `asset-smoke-proxy-${Date.now()}`;
   const blobProxyFilename = `smoke-proxy-${Date.now()}.jpg`;
   const blobPublicUrl = `https://public.blob.vercel-storage.com/images/${blobProxyFilename}`;
+  const blobProxyUrl = `/images/${encodeURIComponent(blobProxyFilename)}`;
   const metadata = JSON.parse(metadataBackup);
 
   fs.copyFileSync(sourceImagePath, imagePath);
@@ -446,6 +447,7 @@ function createDeleteFixture() {
   const fixture = {
     id,
     blobPublicUrl,
+    blobProxyUrl,
     blobProxyImageId,
     flexibleImageId,
     flexibleImageUrl,

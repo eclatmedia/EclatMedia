@@ -404,5 +404,6 @@ module.exports = {
   saveEnquiries,
   saveMetadata,
   saveSiteContent,
+  sanitizeFilename,
   storeUploadedImage
 };

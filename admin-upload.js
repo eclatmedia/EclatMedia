@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { handleUpload } = require('@vercel/blob/client');
 const express = require('express');
 const path = require('path');
 const { Readable } = require('stream');
@@ -21,6 +22,7 @@ const {
   readStoredImage,
   resolveStoredImageUrl,
   removeStoredImage,
+  sanitizeFilename,
   saveEnquiries: saveStoredEnquiries,
   saveMetadata: saveStoredMetadata,
   saveSiteContent: saveStoredSiteContent,
@@ -37,6 +39,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const IS_VERCEL = process.env.VERCEL === '1';
 const IS_PRODUCTION_RUNTIME = process.env.NODE_ENV === 'production' || IS_VERCEL;
 const DIRECT_UPLOADS_ENABLED = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const DIRECT_CLIENT_UPLOADS_ENABLED = IS_VERCEL && DIRECT_UPLOADS_ENABLED;
 const AUTH_CONFIGURATION_ERROR = getAuthConfigurationError();
 const ADMIN_CONFIGURATION_ERROR =
   IS_PRODUCTION_RUNTIME && ADMIN_USER === 'admin' && ADMIN_PASSWORD === 'password'
@@ -46,6 +49,7 @@ const ADMIN_RUNTIME_CONFIGURATION_ERROR = [AUTH_CONFIGURATION_ERROR, ADMIN_CONFI
   .filter(Boolean)
   .join(' ');
 const PORTFOLIO_WRITE_CONFIGURATION_ERROR = STORAGE_WRITE_CONFIGURATION_ERROR;
+const PORTFOLIO_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 const categories = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const enquiryStatuses = ['new', 'responded', 'archived'];
 
@@ -122,6 +126,7 @@ const defaultSiteContent = {
         'Cinematic motion coverage for campaigns, events, and stories that need atmosphere, movement, and strong visual rhythm.',
       order: 6
     }
+
   ],
   process: [
     {
@@ -221,7 +226,7 @@ app.use('/images', express.static(IMAGES_DIR));
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 8 * 1024 * 1024,
+    fileSize: PORTFOLIO_IMAGE_MAX_BYTES,
     files: 12
   },
   fileFilter: (req, file, cb) => {
@@ -276,15 +281,117 @@ app.post('/api/enquiries', async (req, res) => {
 });
 
 app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, res) => {
-  res.status(410).json({
-    error: 'Portfolio uploads now run through the server. Refresh the admin page and upload again.'
-  });
+  if (!DIRECT_UPLOADS_ENABLED) {
+    return res.status(503).json({
+      error: PORTFOLIO_WRITE_CONFIGURATION_ERROR || 'Direct uploads are not configured for this deployment.'
+    });
+  }
+
+  if (!req.body || typeof req.body !== 'object' || typeof req.body.type !== 'string') {
+    return res.status(400).json({ error: 'Invalid upload request.' });
+  }
+
+  if (req.body.type === 'blob.generate-client-token') {
+    if (!(req.auth && req.auth.isAdmin)) {
+      return res.status(401).json({ error: 'Sign in to upload images.' });
+    }
+
+    if (!isValidCsrfRequest(req)) {
+      return res.status(403).json({ error: 'Invalid request token.' });
+    }
+  }
+
+  try {
+    const payload = await handleUpload({
+      body: req.body,
+      request: req,
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
+        validateDirectUploadRequest(pathname, clientPayload);
+        return {
+          allowedContentTypes: ['image/*'],
+          maximumSizeInBytes: PORTFOLIO_IMAGE_MAX_BYTES,
+          addRandomSuffix: false,
+          allowOverwrite: false
+        };
+      }
+    });
+    res.status(200).json(payload);
+  } catch (error) {
+    res.status(400).json({
+      error: error && typeof error.message === 'string' ? error.message : 'Unable to prepare upload.'
+    });
+  }
 });
 
 app.post('/api/admin/portfolio/register', requireAdmin, verifyCsrf, async (req, res) => {
-  res.status(410).json({
-    error: 'Portfolio uploads now run through the server. Refresh the admin page and upload again.'
+  if (!DIRECT_UPLOADS_ENABLED) {
+    return res.status(503).json({
+      error: PORTFOLIO_WRITE_CONFIGURATION_ERROR || 'Direct uploads are not configured for this deployment.'
+    });
+  }
+
+  const category = normalizeCategory(req.body.category);
+  if (!category) {
+    return res.status(400).json({ error: 'Choose a valid portfolio category.' });
+  }
+
+  const uploadEntries = normalizeDirectUploadEntries(req.body.uploads);
+  if (!uploadEntries.length) {
+    return res.status(400).json({ error: 'Select at least one image to upload.' });
+  }
+
+  const images = await loadMetadata();
+  const startingOrder = images.length;
+
+  try {
+    uploadEntries.forEach((file, index) => {
+      images.push({
+        id: createId('asset'),
+        filename: file.filename,
+        imageUrl: file.imageUrl,
+        storagePath: file.storagePath,
+        originalname: file.originalname,
+        title: createPortfolioTitle(file.originalname),
+        category,
+        order: startingOrder + index + 1,
+        createdAt: new Date().toISOString()
+      });
+    });
+    await saveMetadata(images);
+  } catch (error) {
+    await cleanupDirectUploadEntries(uploadEntries);
+    return res.status(500).json({
+      error: getStorageErrorMessage(error, 'Unable to upload the selected images.')
+    });
+  }
+
+  res.status(201).json({
+    success: true,
+    uploadedCount: uploadEntries.length
   });
+});
+
+app.post('/api/admin/portfolio/cleanup', requireAdmin, verifyCsrf, async (req, res) => {
+  if (!DIRECT_UPLOADS_ENABLED) {
+    return res.status(503).json({
+      error: PORTFOLIO_WRITE_CONFIGURATION_ERROR || 'Direct uploads are not configured for this deployment.'
+    });
+  }
+
+  const uploadEntries = normalizeDirectUploadEntries(req.body.uploads);
+  if (!uploadEntries.length) {
+    return res.status(200).json({ success: true });
+  }
+
+  try {
+    await cleanupDirectUploadEntries(uploadEntries);
+  } catch (error) {
+    return res.status(500).json({
+      error: getStorageErrorMessage(error, 'Unable to clean up uploaded images.')
+    });
+  }
+
+  res.status(200).json({ success: true });
 });
 
 app.get('/images/:filename', async (req, res, next) => {
@@ -1175,6 +1282,80 @@ function renderImageFallbackAttributes(image) {
   )}" onerror="if(this.dataset.fallbackSrc&&this.src!==this.dataset.fallbackSrc){this.src=this.dataset.fallbackSrc;return;}this.onerror=null;"`;
 }
 
+function validateDirectUploadRequest(pathname, clientPayload) {
+  if (typeof pathname !== 'string' || !isSafeDirectUploadPathname(pathname)) {
+    throw new Error('Invalid upload destination.');
+  }
+
+  const metadata = parseDirectUploadClientPayload(clientPayload);
+  if (!metadata.originalname) {
+    throw new Error('Missing upload file metadata.');
+  }
+}
+
+function parseDirectUploadClientPayload(value) {
+  if (typeof value !== 'string' || !value) {
+    return { originalname: '' };
+  }
+
+  try {
+    const payload = JSON.parse(value);
+    return {
+      originalname: sanitizeShortText(payload.originalname)
+    };
+  } catch (error) {
+    return { originalname: '' };
+  }
+}
+
+function isSafeDirectUploadPathname(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('images/')) {
+    return false;
+  }
+
+  return sanitizeStoragePath(trimmed) === trimmed && path.basename(trimmed) === sanitizeFilename(trimmed);
+}
+
+function normalizeDirectUploadEntries(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => normalizeDirectUploadEntry(entry))
+    .filter(Boolean);
+}
+
+function normalizeDirectUploadEntry(entry) {
+  const source = entry && typeof entry === 'object' ? entry : {};
+  const storagePath = sanitizeStoragePath(source.pathname || source.storagePath);
+  const filename = storagePath.startsWith('images/') ? path.basename(storagePath) : '';
+  const imageUrl = normalizeAssetUrl(source.url || source.imageUrl);
+  const originalname = sanitizeShortText(source.originalname) || filename;
+
+  if (!storagePath || !filename || !imageUrl || !originalname) {
+    return null;
+  }
+
+  return {
+    filename,
+    imageUrl,
+    originalname,
+    storagePath
+  };
+}
+
+async function cleanupDirectUploadEntries(entries) {
+  for (const entry of entries) {
+    await removeStoredImage(entry);
+  }
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -1733,16 +1914,22 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
             }
             <form method="POST" action="/admin/portfolio/upload?csrfToken=${encodeURIComponent(
               csrfToken
-            )}" enctype="multipart/form-data" class="admin-form upload-form">
+            )}" enctype="multipart/form-data" class="admin-form upload-form"${
+              DIRECT_CLIENT_UPLOADS_ENABLED
+                ? ' data-direct-upload-enabled="true" data-upload-url="/api/admin/portfolio/upload-url" data-register-url="/api/admin/portfolio/register" data-cleanup-url="/api/admin/portfolio/cleanup"'
+                : ''
+            }>
               ${renderCsrfInput(csrfToken)}
               <label class="field">
                 <span>Image files</span>
                 <input type="file" name="images" accept="image/*" multiple required>
                 <small class="field-hint">${
-                  DIRECT_UPLOADS_ENABLED
+                  DIRECT_CLIENT_UPLOADS_ENABLED
+                    ? 'Upload up to 12 images at once. On Vercel, images upload directly from your browser to Blob storage so large galleries do not hit the function payload limit.'
+                    : DIRECT_UPLOADS_ENABLED
                     ? 'Upload up to 12 images at once. Files are uploaded on the server and saved to public Blob storage.'
                     : IS_VERCEL
-                      ? 'Uploads are blocked until Vercel Blob is configured for this deployment.'
+                    ? 'Uploads are blocked until Vercel Blob is configured for this deployment.'
                     : 'Upload up to 12 images at once from the same source or shoot.'
                 }</small>
               </label>
@@ -1788,6 +1975,7 @@ function renderAdminDashboardPage({ siteContent, images, enquiries, csrfToken, f
         </main>
       </div>
       <script src="/admin.js" defer></script>
+      <script type="module" src="/admin-blob-upload.js"></script>
     </body>
     </html>
   `;

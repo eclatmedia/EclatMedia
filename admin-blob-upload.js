@@ -1,4 +1,4 @@
-import { upload } from '/node_modules/@vercel/blob/dist/client.js';
+const BLOB_API_VERSION = '12';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('.upload-form[data-direct-upload-enabled="true"]');
@@ -48,25 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       for (const [index, file] of files.entries()) {
         updateStatus(status, `Uploading ${index + 1} of ${files.length}: ${file.name}`);
-        const blob = await upload(createUploadPathname(file.name, index), file, {
-          access: 'public',
-          clientPayload: JSON.stringify({
-            originalname: file.name
-          }),
-          contentType: file.type || undefined,
-          handleUploadUrl: form.dataset.uploadUrl,
-          headers: {
-            'x-csrf-token': csrfInput.value
-          },
-          onUploadProgress(progress) {
-            const percentage = Number.isFinite(progress.percentage)
-              ? Math.round(progress.percentage)
-              : 0;
-            updateStatus(
-              status,
-              `Uploading ${index + 1} of ${files.length}: ${file.name} (${percentage}%)`
-            );
-          }
+        const preparedUpload = await createPreparedUpload({
+          csrfToken: csrfInput.value,
+          file,
+          form,
+          index
+        });
+        const blob = await uploadFileToBlob({
+          file,
+          preparedUpload,
+          progressMessage: (message) => updateStatus(status, message)
         });
 
         uploadedEntries.push({
@@ -119,6 +110,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+async function createPreparedUpload({ csrfToken, file, form, index }) {
+  const pathname = createUploadPathname(file.name, index);
+  const response = await fetch(form.dataset.uploadUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-csrf-token': csrfToken
+    },
+    body: JSON.stringify({
+      type: 'blob.generate-client-token',
+      payload: {
+        pathname,
+        clientPayload: JSON.stringify({
+          originalname: file.name
+        })
+      }
+    })
+  });
+  const payload = await readJson(response);
+  if (!response.ok || !payload.uploadUrl || !payload.storeId) {
+    throw new Error(payload.error || 'Unable to prepare upload.');
+  }
+
+  return payload;
+}
+
+async function uploadFileToBlob({ file, preparedUpload, progressMessage }) {
+  const response = await fetch(preparedUpload.uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'x-api-version': BLOB_API_VERSION,
+      'x-content-length': String(file.size),
+      'x-vercel-blob-access': 'public',
+      'x-vercel-blob-store-id': preparedUpload.storeId,
+      ...(file.type ? { 'x-content-type': file.type } : {})
+    },
+    body: file
+  });
+
+  progressMessage(`Finishing upload: ${file.name}`);
+
+  const payload = await readJson(response);
+  if (!response.ok || !payload.url || !payload.pathname) {
+    throw new Error(payload.error || `Unable to upload ${file.name}.`);
+  }
+
+  return payload;
+}
 
 function createUploadPathname(filename, index) {
   const safeName = sanitizeFilename(filename);

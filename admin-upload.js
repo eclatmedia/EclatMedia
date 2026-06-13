@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { handleUpload } = require('@vercel/blob/client');
+const { issueSignedToken, parseStoreIdFromDelegationToken, presignUrl } = require('@vercel/blob');
 const express = require('express');
 const path = require('path');
 const { Readable } = require('stream');
@@ -302,20 +302,27 @@ app.post('/api/admin/portfolio/upload-url', ensureAdminConfigured, async (req, r
   }
 
   try {
-    const payload = await handleUpload({
-      body: req.body,
-      request: req,
-      onBeforeGenerateToken: async (pathname, clientPayload) => {
-        validateDirectUploadRequest(pathname, clientPayload);
-        return {
-          allowedContentTypes: ['image/*'],
-          maximumSizeInBytes: PORTFOLIO_IMAGE_MAX_BYTES,
-          addRandomSuffix: false,
-          allowOverwrite: false
-        };
-      }
+    const pathname = req.body.payload?.pathname;
+    const clientPayload = req.body.payload?.clientPayload;
+    validateDirectUploadRequest(pathname, clientPayload);
+
+    const signedToken = await issueSignedToken({
+      pathname,
+      operations: ['put'],
+      allowedContentTypes: ['image/*'],
+      maximumSizeInBytes: PORTFOLIO_IMAGE_MAX_BYTES
     });
-    res.status(200).json(payload);
+    const { presignedUrl } = await presignUrl(signedToken, {
+      access: 'public',
+      operation: 'put',
+      pathname
+    });
+
+    res.status(200).json({
+      uploadUrl: presignedUrl,
+      storeId: parseStoreIdFromDelegationToken(signedToken.delegationToken),
+      pathname
+    });
   } catch (error) {
     res.status(400).json({
       error: error && typeof error.message === 'string' ? error.message : 'Unable to prepare upload.'

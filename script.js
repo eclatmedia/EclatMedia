@@ -297,20 +297,9 @@ function renderPortfolio(portfolio) {
       applyImageFallback(image, item);
 
       const overlay = createElement('div', 'portfolio-overlay');
-      const overlayText = createElement('div', 'portfolio-overlay-text');
-      overlayText.append(createElement('span', 'portfolio-overlay-cat', item.category || 'Featured Work'));
-      overlayText.append(createElement('h3', 'portfolio-title', item.title || 'Untitled Project'));
-      overlayText.append(
-        createElement(
-          'p',
-          'portfolio-overlay-copy',
-          'Open the image for a closer look, or switch categories to browse a focused client gallery.'
-        )
-      );
-
       const viewButton = createViewerButton(item, 'portfolio-view-button');
 
-      overlay.append(overlayText, viewButton);
+      overlay.append(viewButton);
       media.append(image, overlay);
       card.append(media);
       container.append(card);

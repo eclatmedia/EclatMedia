@@ -752,52 +752,19 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to top, rgba(14,12,10,0.94) 0%, rgba(14,12,10,0.4) 52%, transparent 100%),
-    linear-gradient(90deg, rgba(14,12,10,0.38) 0%, transparent 42%);
+    linear-gradient(to top, rgba(14,12,10,0.76) 0%, rgba(14,12,10,0.18) 42%, transparent 100%);
   opacity: 1;
   transition: background 0.4s;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: flex-end;
   padding: 18px;
-  gap: 14px;
+  gap: 0;
 }
 
 .portfolio-item:hover .portfolio-overlay {
   background:
-    linear-gradient(to top, rgba(14,12,10,0.97) 0%, rgba(14,12,10,0.5) 56%, transparent 100%),
-    linear-gradient(90deg, rgba(14,12,10,0.5) 0%, transparent 50%);
-}
-
-.portfolio-overlay-text {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1rem;
-  font-weight: 300;
-  max-width: 220px;
-}
-
-.portfolio-title {
-  font-size: clamp(1.15rem, 1.45vw, 1.5rem);
-  font-weight: 400;
-  line-height: 1.05;
-}
-
-.portfolio-overlay-copy {
-  margin-top: 8px;
-  font-family: 'Alte Haas Grotesk', sans-serif;
-  font-size: 0.62rem;
-  letter-spacing: 0.04em;
-  line-height: 1.55;
-  color: rgba(244,238,228,0.72);
-}
-
-.portfolio-overlay-cat {
-  font-size: 0.56rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gold);
-  display: block;
-  margin-bottom: 4px;
+    linear-gradient(to top, rgba(14,12,10,0.86) 0%, rgba(14,12,10,0.24) 46%, transparent 100%);
 }
 
 .portfolio-view-button {

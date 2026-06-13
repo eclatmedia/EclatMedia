@@ -1482,7 +1482,7 @@ function renderGalleryPage(images, selectedCategory) {
   const emptyState = activeCategory
     ? `<p class="empty-state">No ${escapeHtml(
         activeCategory.toLowerCase()
-      )} images have been uploaded yet. Choose another category or add new work from the admin area.</p>`
+      )} images have been uploaded yet. Choose another category or check back soon for new work.</p>`
     : '<p class="empty-state">No portfolio work has been uploaded yet.</p>';
 
   const sections = visibleCategories
@@ -1577,7 +1577,6 @@ function renderGalleryPage(images, selectedCategory) {
           </div>
           <div class="panel-actions">
             <a class="admin-button admin-button-secondary" href="/">View site</a>
-            <a class="admin-button" href="/admin/login">Admin login</a>
           </div>
         </header>
         ${sections || emptyState}

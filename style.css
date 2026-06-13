@@ -914,37 +914,37 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 .team-intro {
   display: flex;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
   align-items: flex-end;
-  margin-bottom: 34px;
+  margin-bottom: 28px;
 }
 
 .team-copy {
-  max-width: 460px;
-  font-size: 0.76rem;
-  line-height: 1.75;
+  max-width: 400px;
+  font-size: 0.72rem;
+  line-height: 1.68;
   color: rgba(244,238,228,0.68);
 }
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 290px));
+  grid-template-columns: repeat(3, minmax(200px, 250px));
   justify-content: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .team-card {
   width: 100%;
   background: linear-gradient(180deg, rgba(29,26,23,0.98), rgba(21,18,16,0.98));
   border: 1px solid rgba(210,177,95,0.1);
-  border-radius: 24px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 16px 36px rgba(0,0,0,0.16);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.14);
 }
 
 .team-media {
   position: relative;
-  aspect-ratio: 5 / 6;
+  aspect-ratio: 4 / 5;
   background:
     radial-gradient(circle at top, rgba(210,177,95,0.16), transparent 34%),
     linear-gradient(180deg, #262019 0%, #161210 100%);
@@ -981,36 +981,36 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 }
 
 .team-card-content {
-  padding: 24px 22px 26px;
+  padding: 20px 18px 22px;
 }
 
 .team-card-index {
   display: inline-block;
-  margin-bottom: 12px;
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
+  margin-bottom: 10px;
+  font-size: 0.54rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--gold);
 }
 
 .team-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1.55rem;
+  font-size: 1.34rem;
   font-weight: 400;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .team-role {
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
+  font-size: 0.56rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .team-bio {
-  font-size: 0.75rem;
-  line-height: 1.7;
+  font-size: 0.7rem;
+  line-height: 1.6;
   color: rgba(244,238,228,0.7);
 }
 

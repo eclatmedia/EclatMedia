@@ -940,14 +940,21 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 14px 28px rgba(0,0,0,0.14);
+  padding: 18px 18px 0;
 }
 
 .team-media {
   position: relative;
-  aspect-ratio: 4 / 5;
+  width: min(148px, 100%);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
   background:
     radial-gradient(circle at top, rgba(210,177,95,0.16), transparent 34%),
     linear-gradient(180deg, #262019 0%, #161210 100%);
+  border: 1px solid rgba(210,177,95,0.16);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.22);
 }
 
 .team-media::after {
@@ -972,7 +979,7 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   display: grid;
   place-items: center;
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(3rem, 7vw, 4.6rem);
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
   letter-spacing: 0.08em;
   color: rgba(244,238,228,0.9);
   background:
@@ -981,7 +988,8 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 }
 
 .team-card-content {
-  padding: 20px 18px 22px;
+  padding: 18px 6px 20px;
+  text-align: center;
 }
 
 .team-card-index {

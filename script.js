@@ -332,21 +332,31 @@ function renderPortfolio(portfolio) {
 
 function renderHeroMosaic(portfolio) {
   const cells = [...document.querySelectorAll('.mosaic-cell')];
+  const stageMedia = document.getElementById('hero-stage-media');
   if (!cells.length) {
     return;
   }
 
   window.clearInterval(heroMosaicRotationTimer);
 
+  const prioritizedPortfolio = getHeroPriorityPortfolio(portfolio);
+  const featuredItem = prioritizedPortfolio[0] || null;
+  const mosaicPortfolio =
+    prioritizedPortfolio.length > 1
+      ? [...prioritizedPortfolio.slice(1), prioritizedPortfolio[0]]
+      : prioritizedPortfolio;
+
+  renderHeroStage(stageMedia, featuredItem);
+
   let startIndex = 0;
   renderMosaicState(startIndex);
 
-  if (portfolio.length > 1) {
+  if (mosaicPortfolio.length > 1) {
     heroMosaicRotationTimer = window.setInterval(() => {
       cells.forEach((cell) => cell.classList.add('is-rotating'));
 
       window.setTimeout(() => {
-        startIndex = (startIndex + 1) % portfolio.length;
+        startIndex = (startIndex + 1) % mosaicPortfolio.length;
         renderMosaicState(startIndex);
 
         requestAnimationFrame(() => {
@@ -357,7 +367,7 @@ function renderHeroMosaic(portfolio) {
   }
 
   function renderMosaicState(offset) {
-    const visibleItems = getVisibleHeroMosaicItems(portfolio, offset, cells.length);
+    const visibleItems = getVisibleHeroMosaicItems(mosaicPortfolio, offset, cells.length);
 
     cells.forEach((cell, index) => {
       const item = visibleItems[index];
@@ -405,12 +415,105 @@ function renderHeroMosaic(portfolio) {
   }
 }
 
+function renderHeroStage(container, item) {
+  if (!container) {
+    return;
+  }
+
+  container.replaceChildren();
+
+  const heroVideoSrc = typeof container.dataset.heroVideoSrc === 'string'
+    ? container.dataset.heroVideoSrc.trim()
+    : '';
+
+  if (heroVideoSrc) {
+    const video = document.createElement('video');
+    video.className = 'hero-stage-video';
+    video.src = heroVideoSrc;
+    video.autoplay = true;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.defaultMuted = true;
+    video.setAttribute('aria-hidden', 'true');
+    video.addEventListener(
+      'error',
+      () => {
+        container.replaceChildren(item ? createHeroStageImage(item) : createHeroStagePlaceholder());
+      },
+      { once: true }
+    );
+    container.append(video);
+    return;
+  }
+
+  if (!item) {
+    container.append(createHeroStagePlaceholder());
+    return;
+  }
+
+  container.append(createHeroStageImage(item));
+}
+
+function createHeroStageImage(item) {
+  const image = document.createElement('img');
+  image.className = 'hero-stage-photo';
+  image.src = getPrimaryImageUrl(item);
+  image.alt = item.title ? `${item.title} — featured portrait` : 'Featured portrait';
+  image.loading = 'eager';
+  image.decoding = 'async';
+  const fallbackImageUrl = getFallbackImageUrl(item);
+  image.addEventListener(
+    'error',
+    () => {
+      if (fallbackImageUrl && image.src !== fallbackImageUrl) {
+        image.src = fallbackImageUrl;
+        return;
+      }
+
+      image.replaceWith(createHeroStagePlaceholder());
+    },
+    { once: false }
+  );
+  return image;
+}
+
 function getVisibleHeroMosaicItems(portfolio, startIndex, count) {
   if (!portfolio.length) {
     return Array.from({ length: count }, () => null);
   }
 
   return Array.from({ length: count }, (_, index) => portfolio[(startIndex + index) % portfolio.length]);
+}
+
+function getHeroPriorityPortfolio(portfolio) {
+  const categoryPriority = new Map([
+    ['Portrait', 0],
+    ['Wedding', 1],
+    ['Editorial', 2],
+    ['Brand', 3],
+    ['Commercial', 4],
+    ['Event', 5],
+    ['Other', 6]
+  ]);
+
+  return [...portfolio].sort((left, right) => {
+    const leftRank = categoryPriority.get(left.category) ?? 99;
+    const rightRank = categoryPriority.get(right.category) ?? 99;
+
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
+}
+
+function createHeroStagePlaceholder() {
+  const placeholder = createElement('div', 'hero-stage-placeholder');
+  placeholder.append(createElement('span', 'hero-stage-glow'));
+  placeholder.append(createElement('span', 'hero-stage-silhouette'));
+  return placeholder;
 }
 
 function renderAbout(settings) {

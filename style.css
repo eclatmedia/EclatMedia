@@ -228,8 +228,8 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  width: min(30vw, 360px);
-  gap: 16px;
+  width: min(28vw, 320px);
+  gap: 14px;
   z-index: 2;
   filter: drop-shadow(0 28px 72px rgba(0,0,0,0.32));
 }
@@ -370,31 +370,31 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 }
 
 .mosaic-cell:nth-child(1) {
-  width: 82%;
-  height: 232px;
+  width: 72%;
+  height: 312px;
   align-self: flex-end;
-  transform: translateX(-8px) rotate(-1.2deg);
+  transform: translateX(-2px) rotate(-1.2deg);
 }
 
 .mosaic-cell:nth-child(2) {
-  width: 72%;
-  height: 212px;
-  margin-top: -112px;
-  transform: translateX(-44px) rotate(1deg);
+  width: 66%;
+  height: 286px;
+  margin-top: -154px;
+  transform: translateX(-92px) rotate(1.2deg);
 }
 
 .mosaic-cell:nth-child(3) {
-  width: 86%;
-  height: 194px;
-  margin-top: -122px;
-  transform: translateX(-18px) rotate(-0.8deg);
+  width: 70%;
+  height: 266px;
+  margin-top: -162px;
+  transform: translateX(-36px) rotate(-0.7deg);
 }
 
 .mosaic-cell:nth-child(4) {
-  width: 80%;
-  height: 120px;
-  margin-top: -72px;
-  transform: translateX(-28px) rotate(0.8deg);
+  width: 62%;
+  height: 236px;
+  margin-top: -150px;
+  transform: translateX(-118px) rotate(1deg);
 }
 
 .mosaic-cell:hover,
@@ -408,28 +408,29 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 
 .mosaic-cell:nth-child(1):hover,
 .mosaic-cell:nth-child(1):focus-visible {
-  transform: translateX(-8px) translateY(-8px) rotate(-0.6deg);
+  transform: translateX(-2px) translateY(-8px) rotate(-0.6deg);
 }
 
 .mosaic-cell:nth-child(2):hover,
 .mosaic-cell:nth-child(2):focus-visible {
-  transform: translateX(-22px) translateY(-8px) rotate(1.4deg);
+  transform: translateX(-92px) translateY(-8px) rotate(1.5deg);
 }
 
 .mosaic-cell:nth-child(3):hover,
 .mosaic-cell:nth-child(3):focus-visible {
-  transform: translateX(-8px) translateY(-8px) rotate(-0.2deg);
+  transform: translateX(-36px) translateY(-8px) rotate(-0.1deg);
 }
 
 .mosaic-cell:nth-child(4):hover,
 .mosaic-cell:nth-child(4):focus-visible {
-  transform: translateX(-28px) translateY(-8px) rotate(1.2deg);
+  transform: translateX(-118px) translateY(-8px) rotate(1.3deg);
 }
 
 /* If you add real images later, they will use these rules */
 .mosaic-photo {
   width: 100%; height: 100%;
   object-fit: cover;
+  object-position: center 18%;
   filter: sepia(20%) contrast(1.1);
   transition: transform 0.6s ease, filter 0.4s ease, opacity 0.35s ease;
 }

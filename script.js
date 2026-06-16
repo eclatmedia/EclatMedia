@@ -435,6 +435,13 @@ function renderHeroStage(container, item) {
     video.loop = true;
     video.playsInline = true;
     video.defaultMuted = true;
+    video.preload = 'auto';
+    video.disablePictureInPicture = true;
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    video.setAttribute('loop', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', 'true');
     video.setAttribute('aria-hidden', 'true');
     video.addEventListener(
       'error',
@@ -444,6 +451,7 @@ function renderHeroStage(container, item) {
       { once: true }
     );
     container.append(video);
+    keepHeroVideoPlaying(video);
     return;
   }
 
@@ -476,6 +484,31 @@ function createHeroStageImage(item) {
     { once: false }
   );
   return image;
+}
+
+function keepHeroVideoPlaying(video) {
+  const attemptPlayback = () => {
+    if (!video.isConnected || document.hidden) {
+      return;
+    }
+
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        console.warn('Hero video playback was interrupted by the browser.');
+      });
+    }
+  };
+
+  ['loadedmetadata', 'canplay', 'playing'].forEach((eventName) => {
+    video.addEventListener(eventName, attemptPlayback);
+  });
+
+  video.addEventListener('pause', attemptPlayback);
+  document.addEventListener('visibilitychange', attemptPlayback);
+  window.addEventListener('pageshow', attemptPlayback);
+
+  requestAnimationFrame(attemptPlayback);
 }
 
 function getVisibleHeroMosaicItems(portfolio, startIndex, count) {

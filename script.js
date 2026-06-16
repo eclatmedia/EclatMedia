@@ -115,6 +115,13 @@ const defaultContent = {
 };
 
 const portfolioCategoryOrder = ['All', 'Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
+const portfolioLayoutClasses = [
+  'portfolio-strip--empty',
+  'portfolio-strip--single',
+  'portfolio-strip--duo',
+  'portfolio-strip--trio',
+  'portfolio-strip--grid'
+];
 const heroMosaicRotationDelay = 3200;
 const portfolioAllCategory = 'All';
 const fallbackPortfolioCategory = 'Other';
@@ -265,6 +272,7 @@ function renderPortfolio(portfolio) {
 
   function renderPortfolioSelection() {
     const visibleItems = getPortfolioItemsForCategory(portfolio, activeCategory);
+    setPortfolioLayout(container, visibleItems.length);
 
     filters.querySelectorAll('.portfolio-filter').forEach((button) => {
       const isActive = button.dataset.category === activeCategory;
@@ -314,6 +322,7 @@ function getPortfolioElements() {
 }
 
 function renderEmptyPortfolioState({ container, status, galleryLink }) {
+  setPortfolioLayout(container, 0);
   container.append(
     createElement('p', 'portfolio-empty', 'Portfolio images will appear here once work is uploaded.')
   );
@@ -384,6 +393,32 @@ function createPortfolioCard(item) {
   media.append(image, overlay);
   card.append(media);
   return card;
+}
+
+function setPortfolioLayout(container, itemCount) {
+  container.classList.remove(...portfolioLayoutClasses);
+
+  if (itemCount <= 0) {
+    container.classList.add('portfolio-strip--empty');
+    return;
+  }
+
+  if (itemCount === 1) {
+    container.classList.add('portfolio-strip--single');
+    return;
+  }
+
+  if (itemCount === 2) {
+    container.classList.add('portfolio-strip--duo');
+    return;
+  }
+
+  if (itemCount === 3) {
+    container.classList.add('portfolio-strip--trio');
+    return;
+  }
+
+  container.classList.add('portfolio-strip--grid');
 }
 
 function updatePortfolioFeedback({ activeCategory, visibleCount, totalCount, status, galleryLink }) {

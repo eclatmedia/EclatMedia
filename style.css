@@ -842,9 +842,31 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 
 .portfolio-strip {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 1fr 2fr;
-  gap: 14px;
-  height: 420px;
+  width: 100%;
+  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.portfolio-strip--empty,
+.portfolio-strip--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.portfolio-strip--single {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.portfolio-strip--duo {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portfolio-strip--duo,
+.portfolio-strip--trio,
+.portfolio-strip--grid {
+  max-width: 1240px;
+  margin: 0 auto;
 }
 
 .portfolio-item {
@@ -854,6 +876,17 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   border-radius: 22px;
   border: 1px solid rgba(210,177,95,0.1);
   box-shadow: 0 16px 36px rgba(0,0,0,0.18);
+  min-height: 320px;
+  aspect-ratio: 4 / 5;
+}
+
+.portfolio-strip--single .portfolio-item {
+  min-height: 420px;
+  aspect-ratio: 16 / 10;
+}
+
+.portfolio-strip--trio .portfolio-item {
+  aspect-ratio: 3 / 4;
 }
 
 .portfolio-media {
@@ -1472,8 +1505,7 @@ footer {
   }
 
   .portfolio-strip {
-    grid-template-columns: repeat(3, 1fr);
-    height: auto;
+    gap: 16px;
   }
 
   .portfolio-item {
@@ -1613,11 +1645,12 @@ footer {
   .portfolio-strip {
     gap: 14px;
     grid-template-columns: 1fr;
-    grid-auto-rows: unset;
+    max-width: 100%;
   }
 
   .portfolio-item {
     min-height: 320px;
+    aspect-ratio: 4 / 5;
   }
 
   .portfolio-overlay {
@@ -1766,6 +1799,11 @@ footer {
 
   .portfolio-item {
     min-height: 240px;
+  }
+
+  .portfolio-strip--single .portfolio-item {
+    min-height: 260px;
+    aspect-ratio: 4 / 3;
   }
 
   .portfolio-overlay {

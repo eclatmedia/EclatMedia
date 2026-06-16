@@ -1,9 +1,7 @@
-cxdocument.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
   const flash = document.querySelector('[data-flash]');
   if (flash) {
-    window.setTimeout(() => {
-      flash.classList.add('is-hidden');
-    }, 5000);
+    hideFlashAfterDelay(flash, 5000);
   }
 
   document.querySelectorAll('form[data-confirm]').forEach((form) => {
@@ -14,3 +12,9 @@ cxdocument.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+function hideFlashAfterDelay(element, delay) {
+  window.setTimeout(() => {
+    element.classList.add('is-hidden');
+  }, delay);
+}

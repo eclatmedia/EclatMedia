@@ -26,17 +26,7 @@ function initializePublicViewer() {
 
     event.preventDefault();
     lastTrigger = trigger;
-    openViewer({
-      sources: collectViewerSources(trigger),
-      title: trigger.dataset.viewerTitle || 'Selected image',
-      category: trigger.dataset.viewerCategory || 'Portfolio',
-      image,
-      categoryNode: category,
-      titleNode: title,
-      copyNode: copy,
-      viewer,
-      closeButton
-    });
+    openViewer(buildViewerState({ trigger, viewer, image, category, title, copy, closeButton }));
   });
 
   closeButton.addEventListener('click', () => closeViewer(viewer, lastTrigger));
@@ -58,17 +48,7 @@ function initializePublicViewer() {
     ) {
       event.preventDefault();
       lastTrigger = trigger;
-      openViewer({
-        sources: collectViewerSources(trigger),
-        title: trigger.dataset.viewerTitle || 'Selected image',
-        category: trigger.dataset.viewerCategory || 'Portfolio',
-        image,
-        categoryNode: category,
-        titleNode: title,
-        copyNode: copy,
-        viewer,
-        closeButton
-      });
+      openViewer(buildViewerState({ trigger, viewer, image, category, title, copy, closeButton }));
       return;
     }
 
@@ -86,6 +66,20 @@ function initializePublicViewer() {
       trapViewerFocus(event, dialog);
     }
   });
+}
+
+function buildViewerState({ trigger, viewer, image, category, title, copy, closeButton }) {
+  return {
+    sources: collectViewerSources(trigger),
+    title: trigger.dataset.viewerTitle || 'Selected image',
+    category: trigger.dataset.viewerCategory || 'Portfolio',
+    image,
+    categoryNode: category,
+    titleNode: title,
+    copyNode: copy,
+    viewer,
+    closeButton
+  };
 }
 
 function openViewer({

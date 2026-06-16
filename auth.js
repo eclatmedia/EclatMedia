@@ -7,6 +7,11 @@ const CSRF_TTL_SECONDS = 60 * 60 * 12;
 const DEFAULT_AUTH_SECRET = 'change-this-session-secret';
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.SESSION_SECRET || DEFAULT_AUTH_SECRET;
 const SECURE_COOKIES = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+const DEFAULT_COOKIE_OPTIONS = {
+  path: '/',
+  sameSite: 'Lax',
+  secure: SECURE_COOKIES
+};
 const AUTH_CONFIGURATION_ERROR =
   SECURE_COOKIES && AUTH_SECRET === DEFAULT_AUTH_SECRET
     ? 'AUTH_SECRET or SESSION_SECRET must be set in production.'
@@ -28,11 +33,9 @@ function authMiddleware(req, res, next) {
   let csrfToken = cookies[CSRF_COOKIE];
 
   if (!verifyToken(csrfToken, 'csrf')) {
-    csrfToken = signToken({
-      type: 'csrf',
-      nonce: crypto.randomBytes(18).toString('hex'),
-      exp: Date.now() + CSRF_TTL_SECONDS * 1000
-    });
+    csrfToken = createSignedToken('csrf', {
+      nonce: crypto.randomBytes(18).toString('hex')
+    }, CSRF_TTL_SECONDS);
     setCookie(res, CSRF_COOKIE, csrfToken, {
       httpOnly: true,
       maxAge: CSRF_TTL_SECONDS
@@ -51,11 +54,9 @@ function startAdminSession(res) {
   setCookie(
     res,
     SESSION_COOKIE,
-    signToken({
-      type: 'admin-session',
-      sub: 'admin',
-      exp: Date.now() + SESSION_TTL_SECONDS * 1000
-    }),
+    createSignedToken('admin-session', {
+      sub: 'admin'
+    }, SESSION_TTL_SECONDS),
     {
       httpOnly: true,
       maxAge: SESSION_TTL_SECONDS
@@ -68,17 +69,30 @@ function clearAdminSession(res) {
 }
 
 function isValidCsrfRequest(req) {
-  const submittedToken =
-    (req.body && typeof req.body.csrfToken === 'string' && req.body.csrfToken) ||
-    (typeof req.query.csrfToken === 'string' && req.query.csrfToken) ||
-    (typeof req.get('x-csrf-token') === 'string' && req.get('x-csrf-token')) ||
-    '';
+  const submittedToken = getSubmittedCsrfToken(req);
 
   if (!submittedToken || !req.csrfToken) {
     return false;
   }
 
   return safeEqual(submittedToken, req.csrfToken) && Boolean(verifyToken(submittedToken, 'csrf'));
+}
+
+function getSubmittedCsrfToken(req) {
+  return (
+    (req.body && typeof req.body.csrfToken === 'string' && req.body.csrfToken) ||
+    (typeof req.query.csrfToken === 'string' && req.query.csrfToken) ||
+    (typeof req.get('x-csrf-token') === 'string' && req.get('x-csrf-token')) ||
+    ''
+  );
+}
+
+function createSignedToken(type, payload, ttlSeconds) {
+  return signToken({
+    ...payload,
+    type,
+    exp: Date.now() + ttlSeconds * 1000
+  });
 }
 
 function signToken(payload) {
@@ -138,24 +152,26 @@ function parseCookies(cookieHeader) {
       return cookies;
     }
 
-    try {
-      cookies[name] = decodeURIComponent(value);
-    } catch (error) {
-      cookies[name] = value;
-    }
+    cookies[name] = decodeCookieValue(value);
 
     return cookies;
   }, {});
+}
+
+function decodeCookieValue(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch (error) {
+    return value;
+  }
 }
 
 function setCookie(res, name, value, { httpOnly, maxAge }) {
   appendSetCookie(
     res,
     serializeCookie(name, value, {
-      path: '/',
       httpOnly,
-      sameSite: 'Lax',
-      secure: SECURE_COOKIES,
+      ...DEFAULT_COOKIE_OPTIONS,
       maxAge
     })
   );
@@ -165,10 +181,8 @@ function clearCookie(res, name) {
   appendSetCookie(
     res,
     serializeCookie(name, '', {
-      path: '/',
       httpOnly: true,
-      sameSite: 'Lax',
-      secure: SECURE_COOKIES,
+      ...DEFAULT_COOKIE_OPTIONS,
       maxAge: 0,
       expires: new Date(0)
     })

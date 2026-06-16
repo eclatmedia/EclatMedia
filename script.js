@@ -116,17 +116,33 @@ const defaultContent = {
 
 const portfolioCategoryOrder = ['All', 'Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const heroMosaicRotationDelay = 3200;
+const portfolioAllCategory = 'All';
+const fallbackPortfolioCategory = 'Other';
+const bookingFieldIds = ['f-name', 'f-email', 'f-service', 'f-date', 'f-message'];
+const heroCategoryPriority = new Map([
+  ['Portrait', 0],
+  ['Wedding', 1],
+  ['Editorial', 2],
+  ['Brand', 3],
+  ['Commercial', 4],
+  ['Event', 5],
+  ['Other', 6]
+]);
 
 let heroMosaicRotationTimer;
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  initializePage();
+});
+
+async function initializePage() {
   initializeMobileNav();
   initializeScrollEffects();
 
   const content = await loadSiteContent();
   renderPage(content);
   initializeBookingForm();
-});
+}
 
 async function loadSiteContent() {
   try {
@@ -208,71 +224,47 @@ function renderServices(services) {
 }
 
 function renderPortfolio(portfolio) {
-  const container = document.getElementById('portfolio-strip');
-  const filters = document.getElementById('portfolio-filters');
-  const status = document.getElementById('portfolio-status');
-  const galleryLink = document.getElementById('portfolio-gallery-link');
-  if (!container || !filters || !status || !galleryLink) {
+  const portfolioElements = getPortfolioElements();
+  if (!portfolioElements) {
     return;
   }
 
+  const { container, filters, status, galleryLink } = portfolioElements;
   container.replaceChildren();
   filters.replaceChildren();
 
   if (!portfolio.length) {
-    const emptyState = createElement('p', 'portfolio-empty', 'Portfolio images will appear here once work is uploaded.');
-    container.append(emptyState);
-    status.textContent = '';
-    galleryLink.href = '/gallery';
-    galleryLink.textContent = 'View All Work';
+    renderEmptyPortfolioState(portfolioElements);
     return;
   }
 
-  const counts = portfolio.reduce((map, item) => {
-    const category = item.category || 'Other';
-    map.set(category, (map.get(category) || 0) + 1);
-    return map;
-  }, new Map());
-  const availableCategories = [
-    ...portfolioCategoryOrder,
-    ...[...counts.keys()].filter((category) => !portfolioCategoryOrder.includes(category))
-  ];
-
-  let activeCategory = 'All';
+  const counts = countPortfolioItemsByCategory(portfolio);
+  const availableCategories = getAvailablePortfolioCategories(counts);
+  let activeCategory = portfolioAllCategory;
 
   availableCategories.forEach((category) => {
-    const button = createElement('button', 'portfolio-filter');
-    button.type = 'button';
-    button.dataset.category = category;
-    button.setAttribute('aria-pressed', category === activeCategory ? 'true' : 'false');
+    filters.append(
+      createPortfolioFilterButton({
+        category,
+        portfolio,
+        counts,
+        activeCategory,
+        onSelect: () => {
+          if (activeCategory === category) {
+            return;
+          }
 
-    const label = createElement('span', 'portfolio-filter-label', category);
-    const count = createElement(
-      'span',
-      'portfolio-filter-count',
-      String(category === 'All' ? portfolio.length : counts.get(category) || 0)
+          activeCategory = category;
+          renderPortfolioSelection();
+        }
+      })
     );
-
-    button.append(label, count);
-    button.addEventListener('click', () => {
-      if (activeCategory === category) {
-        return;
-      }
-
-      activeCategory = category;
-      renderPortfolioSelection();
-    });
-    filters.append(button);
   });
 
   renderPortfolioSelection();
 
   function renderPortfolioSelection() {
-    const matchingItems =
-      activeCategory === 'All'
-        ? portfolio
-        : portfolio.filter((item) => (item.category || 'Other') === activeCategory);
-    const visibleItems = matchingItems;
+    const visibleItems = getPortfolioItemsForCategory(portfolio, activeCategory);
 
     filters.querySelectorAll('.portfolio-filter').forEach((button) => {
       const isActive = button.dataset.category === activeCategory;
@@ -283,26 +275,7 @@ function renderPortfolio(portfolio) {
     container.replaceChildren();
 
     visibleItems.forEach((item) => {
-      const card = createElement('article', 'portfolio-item reveal');
-      const media = createElement('div', 'portfolio-media');
-      applyViewerData(media, item, `View ${item.title || 'portfolio image'} in full size`);
-      media.setAttribute('role', 'button');
-      media.setAttribute('tabindex', '0');
-      const image = document.createElement('img');
-      image.className = 'pimg';
-      image.src = getPrimaryImageUrl(item);
-      image.alt = item.title ? `${item.title} — ${item.category || 'Portfolio image'}` : 'Portfolio image';
-      image.loading = 'lazy';
-      image.decoding = 'async';
-      applyImageFallback(image, item);
-
-      const overlay = createElement('div', 'portfolio-overlay');
-      const viewButton = createViewerButton(item, 'portfolio-view-button');
-
-      overlay.append(viewButton);
-      media.append(image, overlay);
-      card.append(media);
-      container.append(card);
+      container.append(createPortfolioCard(item));
     });
 
     if (!visibleItems.length) {
@@ -315,19 +288,116 @@ function renderPortfolio(portfolio) {
       );
     }
 
-    if (activeCategory === 'All') {
-      status.textContent =
-        `Showing all ${portfolio.length} uploaded photographs. Choose a category like Wedding to focus the gallery.`;
-      galleryLink.href = '/gallery';
-      galleryLink.textContent = 'View All Work';
-    } else {
-      status.textContent = `Showing all ${matchingItems.length} ${activeCategory.toLowerCase()} images.`;
-      galleryLink.href = `/gallery?category=${encodeURIComponent(activeCategory)}`;
-      galleryLink.textContent = `View ${activeCategory} Gallery`;
-    }
+    updatePortfolioFeedback({
+      activeCategory,
+      visibleCount: visibleItems.length,
+      totalCount: portfolio.length,
+      status,
+      galleryLink
+    });
 
     refreshRevealObserver();
   }
+}
+
+function getPortfolioElements() {
+  const container = document.getElementById('portfolio-strip');
+  const filters = document.getElementById('portfolio-filters');
+  const status = document.getElementById('portfolio-status');
+  const galleryLink = document.getElementById('portfolio-gallery-link');
+
+  if (!container || !filters || !status || !galleryLink) {
+    return null;
+  }
+
+  return { container, filters, status, galleryLink };
+}
+
+function renderEmptyPortfolioState({ container, status, galleryLink }) {
+  container.append(
+    createElement('p', 'portfolio-empty', 'Portfolio images will appear here once work is uploaded.')
+  );
+  status.textContent = '';
+  galleryLink.href = '/gallery';
+  galleryLink.textContent = 'View All Work';
+}
+
+function countPortfolioItemsByCategory(portfolio) {
+  return portfolio.reduce((counts, item) => {
+    const category = item.category || fallbackPortfolioCategory;
+    counts.set(category, (counts.get(category) || 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function getAvailablePortfolioCategories(categoryCounts) {
+  return [
+    ...portfolioCategoryOrder,
+    ...[...categoryCounts.keys()].filter((category) => !portfolioCategoryOrder.includes(category))
+  ];
+}
+
+function createPortfolioFilterButton({ category, portfolio, counts, activeCategory, onSelect }) {
+  const button = createElement('button', 'portfolio-filter');
+  button.type = 'button';
+  button.dataset.category = category;
+  button.setAttribute('aria-pressed', String(category === activeCategory));
+
+  const label = createElement('span', 'portfolio-filter-label', category);
+  const count = createElement(
+    'span',
+    'portfolio-filter-count',
+    String(category === portfolioAllCategory ? portfolio.length : counts.get(category) || 0)
+  );
+
+  button.append(label, count);
+  button.addEventListener('click', onSelect);
+  return button;
+}
+
+function getPortfolioItemsForCategory(portfolio, category) {
+  if (category === portfolioAllCategory) {
+    return portfolio;
+  }
+
+  return portfolio.filter((item) => (item.category || fallbackPortfolioCategory) === category);
+}
+
+function createPortfolioCard(item) {
+  const card = createElement('article', 'portfolio-item reveal');
+  const media = createElement('div', 'portfolio-media');
+  applyViewerData(media, item, `View ${item.title || 'portfolio image'} in full size`);
+  media.setAttribute('role', 'button');
+  media.setAttribute('tabindex', '0');
+
+  const image = document.createElement('img');
+  image.className = 'pimg';
+  image.src = getPrimaryImageUrl(item);
+  image.alt = item.title ? `${item.title} — ${item.category || 'Portfolio image'}` : 'Portfolio image';
+  image.loading = 'lazy';
+  image.decoding = 'async';
+  applyImageFallback(image, item);
+
+  const overlay = createElement('div', 'portfolio-overlay');
+  overlay.append(createViewerButton(item, 'portfolio-view-button'));
+
+  media.append(image, overlay);
+  card.append(media);
+  return card;
+}
+
+function updatePortfolioFeedback({ activeCategory, visibleCount, totalCount, status, galleryLink }) {
+  if (activeCategory === portfolioAllCategory) {
+    status.textContent =
+      `Showing all ${totalCount} uploaded photographs. Choose a category like Wedding to focus the gallery.`;
+    galleryLink.href = '/gallery';
+    galleryLink.textContent = 'View All Work';
+    return;
+  }
+
+  status.textContent = `Showing all ${visibleCount} ${activeCategory.toLowerCase()} images.`;
+  galleryLink.href = `/gallery?category=${encodeURIComponent(activeCategory)}`;
+  galleryLink.textContent = `View ${activeCategory} Gallery`;
 }
 
 function renderHeroMosaic(portfolio) {
@@ -401,10 +471,7 @@ function renderHeroMosaic(portfolio) {
         return;
       }
 
-      cell.removeAttribute('data-viewer-trigger');
-      cell.removeAttribute('data-viewer-src');
-      cell.removeAttribute('data-viewer-title');
-      cell.removeAttribute('data-viewer-category');
+      resetViewerData(cell);
       cell.removeAttribute('role');
       cell.removeAttribute('tabindex');
       cell.append(layer);
@@ -520,19 +587,9 @@ function getVisibleHeroMosaicItems(portfolio, startIndex, count) {
 }
 
 function getHeroPriorityPortfolio(portfolio) {
-  const categoryPriority = new Map([
-    ['Portrait', 0],
-    ['Wedding', 1],
-    ['Editorial', 2],
-    ['Brand', 3],
-    ['Commercial', 4],
-    ['Event', 5],
-    ['Other', 6]
-  ]);
-
   return [...portfolio].sort((left, right) => {
-    const leftRank = categoryPriority.get(left.category) ?? 99;
-    const rightRank = categoryPriority.get(right.category) ?? 99;
+    const leftRank = heroCategoryPriority.get(left.category) ?? 99;
+    const rightRank = heroCategoryPriority.get(right.category) ?? 99;
 
     if (leftRank !== rightRank) {
       return leftRank - rightRank;
@@ -658,14 +715,6 @@ function initializeBookingForm() {
   }
 
   submitButton.addEventListener('click', async () => {
-    const fields = {
-      name: document.getElementById('f-name')?.value.trim() || '',
-      email: document.getElementById('f-email')?.value.trim() || '',
-      service: document.getElementById('f-service')?.value.trim() || '',
-      date: document.getElementById('f-date')?.value.trim() || '',
-      message: document.getElementById('f-message')?.value.trim() || ''
-    };
-
     submitButton.disabled = true;
     const originalLabel = submitButton.textContent;
     submitButton.textContent = 'Sending…';
@@ -676,7 +725,7 @@ function initializeBookingForm() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(fields)
+        body: JSON.stringify(collectBookingFields())
       });
 
       const payload = await readJsonResponse(response);
@@ -686,28 +735,39 @@ function initializeBookingForm() {
 
       clearBookingForm();
       submitButton.textContent = 'Enquiry Sent';
-      window.setTimeout(() => {
-        submitButton.textContent = originalLabel;
-        submitButton.disabled = false;
-      }, 1800);
+      restoreBookingSubmitButton(submitButton, originalLabel, 1800);
     } catch (error) {
       console.error('Enquiry submission failed:', error);
       submitButton.textContent = error.message;
-      window.setTimeout(() => {
-        submitButton.textContent = originalLabel;
-        submitButton.disabled = false;
-      }, 2200);
+      restoreBookingSubmitButton(submitButton, originalLabel, 2200);
     }
   });
 }
 
+function collectBookingFields() {
+  return {
+    name: getTrimmedInputValue('f-name'),
+    email: getTrimmedInputValue('f-email'),
+    service: getTrimmedInputValue('f-service'),
+    date: getTrimmedInputValue('f-date'),
+    message: getTrimmedInputValue('f-message')
+  };
+}
+
 function clearBookingForm() {
-  ['f-name', 'f-email', 'f-service', 'f-date', 'f-message'].forEach((id) => {
+  bookingFieldIds.forEach((id) => {
     const field = document.getElementById(id);
     if (field) {
       field.value = '';
     }
   });
+}
+
+function restoreBookingSubmitButton(button, label, delay) {
+  window.setTimeout(() => {
+    button.textContent = label;
+    button.disabled = false;
+  }, delay);
 }
 
 let revealObserver;
@@ -825,11 +885,7 @@ function createTeamPhotoPlaceholder(member) {
 function applyViewerData(element, item, ariaLabel) {
   const primaryImageUrl = getPrimaryImageUrl(item);
   if (!primaryImageUrl) {
-    element.removeAttribute('data-viewer-trigger');
-    element.removeAttribute('data-viewer-src');
-    element.removeAttribute('data-viewer-fallback-src');
-    element.removeAttribute('data-viewer-title');
-    element.removeAttribute('data-viewer-category');
+    resetViewerData(element);
     return false;
   }
 
@@ -840,6 +896,14 @@ function applyViewerData(element, item, ariaLabel) {
   element.dataset.viewerCategory = item.category || 'Featured Work';
   element.setAttribute('aria-label', ariaLabel);
   return true;
+}
+
+function resetViewerData(element) {
+  element.removeAttribute('data-viewer-trigger');
+  element.removeAttribute('data-viewer-src');
+  element.removeAttribute('data-viewer-fallback-src');
+  element.removeAttribute('data-viewer-title');
+  element.removeAttribute('data-viewer-category');
 }
 
 function applyImageFallback(image, item) {
@@ -879,6 +943,11 @@ function createInitials(value) {
   }
 
   return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+}
+
+function getTrimmedInputValue(id) {
+  const field = document.getElementById(id);
+  return typeof field?.value === 'string' ? field.value.trim() : '';
 }
 
 function setText(id, value) {

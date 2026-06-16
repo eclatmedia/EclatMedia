@@ -548,12 +548,12 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 
 .hero-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2.7rem, 5.1vw, 4.3rem);
+  font-size: clamp(2.35rem, 4.5vw, 3.85rem);
   font-weight: 300;
   line-height: 0.96;
   letter-spacing: -0.03em;
   margin-bottom: 28px;
-  max-width: 13ch;
+  max-width: 14ch;
   animation: fadeUp 0.9s 0.5s forwards;
 }
 

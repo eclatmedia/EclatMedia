@@ -1542,6 +1542,7 @@ footer {
   }
 
   .hero {
+    height: auto;
     min-height: auto;
     padding-top: 120px;
     padding-bottom: 56px;
@@ -1550,6 +1551,7 @@ footer {
     align-items: stretch;
     justify-content: flex-start;
     gap: 24px;
+    overflow: visible;
   }
 
   .hero-bg::before,

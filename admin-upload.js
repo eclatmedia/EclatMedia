@@ -56,9 +56,9 @@ const enquiryStatuses = ['new', 'responded', 'archived'];
 const defaultSiteContent = {
   settings: {
     heroTag: '— Visual Storytelling Studio',
-    heroTitlePrefix: 'Crafting',
-    heroTitleEmphasis: 'Luminous',
-    heroTitleSuffix: 'Narratives',
+    heroTitlePrefix: 'Capturing Moments.',
+    heroTitleEmphasis: 'Crafting',
+    heroTitleSuffix: 'Memories.',
     heroSubtitle:
       'Where light becomes language. We create images that transcend documentation — photographs that breathe, emote, and endure.',
     aboutQuote:

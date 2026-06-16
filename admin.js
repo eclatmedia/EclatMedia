@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+cxdocument.addEventListener('DOMContentLoaded', () => {
   const flash = document.querySelector('[data-flash]');
   if (flash) {
     window.setTimeout(() => {

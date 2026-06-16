@@ -1718,11 +1718,11 @@ footer {
   }
 
   .hero-actions .btn-primary {
-    padding: 16px 20px;
-    font-size: 0.74rem;
-    letter-spacing: 0.12em;
+    padding: 15px 18px;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
     line-height: 1.2;
-    white-space: normal;
+    white-space: nowrap;
     box-shadow: 0 14px 26px rgba(210,177,95,0.18);
   }
 

@@ -23,12 +23,16 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--dark-bg);
+  background-image:
+    radial-gradient(circle at top, rgba(210,177,95,0.08), transparent 32%),
+    linear-gradient(180deg, #171411 0%, var(--dark-bg) 24%, #12100f 100%);
+  overscroll-behavior-y: none;
 }
 
 body {
-  background:
-    radial-gradient(circle at top, rgba(210,177,95,0.08), transparent 32%),
-    linear-gradient(180deg, #171411 0%, var(--dark-bg) 24%, #12100f 100%);
+  min-height: 100vh;
+  background: transparent;
   color: var(--cream);
   font-family: 'Alte Haas Grotesk', 'Helvetica Neue', sans-serif;
   overflow-x: hidden;
@@ -1333,9 +1337,15 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
   color: var(--cream);
   font-family: 'Alte Haas Grotesk', sans-serif;
   font-size: 0.74rem;
+  font-weight: 400;
   letter-spacing: 0.04em;
   outline: none;
-  transition: border-color 0.3s;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 14px;
+  box-shadow: none;
+  caret-color: var(--gold);
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
   width: 100%;
 }
 
@@ -1344,7 +1354,9 @@ nav.nav-open .nav-toggle-bar:nth-child(3) {
 }
 
 .form-field:focus {
-  border-color: var(--gold);
+  background: rgba(245,240,232,0.06);
+  border-color: rgba(232,215,170,0.62);
+  box-shadow: 0 0 0 3px rgba(210,177,95,0.14);
 }
 
 textarea.form-field {
@@ -1762,6 +1774,10 @@ footer {
 
   .portfolio-view-button {
     width: 100%;
+  }
+
+  .form-field {
+    font-size: 16px;
   }
 
   .service-card,

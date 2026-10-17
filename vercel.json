@@ -1,24 +1,14 @@
 {
   "version": 2,
+  "outputDirectory": "frontend",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{frontend,admin,data,images}/**"
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/gallery",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/images/:path*",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/admin",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/admin/:path*",
+      "source": "/(.*)",
       "destination": "/api/index.js"
     }
   ]

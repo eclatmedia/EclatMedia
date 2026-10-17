@@ -1,4 +1,5 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 
@@ -6,11 +7,31 @@ const PORT = 3100;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const START_TIMEOUT_MS = 15000;
 
+// The app under test reads/writes real portfolio data through ECLAT_IMAGES_DIR /
+// ECLAT_DATA_DIR (see backend/storage.js). Every server spawned by this script points
+// those at a disposable temp copy instead of the real images/ and data/ folders, so a
+// crash or bug here can never corrupt (or leave test fixtures inside) production data.
+let SANDBOX_ENV = {};
+
 async function main() {
-  const cleanupDeleteFixture = createDeleteFixture();
-  const server = spawn(process.execPath, ['server.js'], {
+  const sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eclat-smoke-'));
+  const sandboxImagesDir = path.join(sandboxDir, 'images');
+  const sandboxDataDir = path.join(sandboxDir, 'data');
+  fs.mkdirSync(sandboxImagesDir, { recursive: true });
+  fs.mkdirSync(sandboxDataDir, { recursive: true });
+  fs.copyFileSync(
+    path.join(process.cwd(), 'images', 'photo1.jpg'),
+    path.join(sandboxImagesDir, 'photo1.jpg')
+  );
+  fs.writeFileSync(path.join(sandboxImagesDir, 'metadata.json'), '[]', 'utf8');
+  fs.writeFileSync(path.join(sandboxDataDir, 'enquiries.json'), '[]', 'utf8');
+
+  SANDBOX_ENV = { ECLAT_IMAGES_DIR: sandboxImagesDir, ECLAT_DATA_DIR: sandboxDataDir };
+
+  const cleanupDeleteFixture = createDeleteFixture(sandboxImagesDir);
+  const server = spawn(process.execPath, [path.join('backend', 'server.js')], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, ...SANDBOX_ENV, PORT: String(PORT) },
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
@@ -27,14 +48,38 @@ async function main() {
     stderr += chunk.toString();
   });
 
+  // Rejecting here (instead of throwing directly in the event handler) keeps this failure
+  // inside the try/finally below, so cleanupDeleteFixture() still runs and the fixtures it
+  // wrote into the real images/metadata.json don't get left behind permanently.
+  let rejectOnCrash = () => {};
+  const serverCrashed = new Promise((_, reject) => {
+    rejectOnCrash = reject;
+  });
+  serverCrashed.catch(() => {});
+
   server.on('exit', (code) => {
     serverExited = true;
     if (!settled) {
-      fail(`Server exited before tests completed (code ${code}).\n${stdout}${stderr}`);
+      rejectOnCrash(new Error(`Server exited before tests completed (code ${code}).\n${stdout}${stderr}`));
     }
   });
 
   try {
+    await Promise.race([runTests(), serverCrashed]);
+
+    settled = true;
+    console.log('Smoke test passed.');
+  } finally {
+    if (!serverExited) {
+      server.kill('SIGTERM');
+      await new Promise((resolve) => server.once('exit', resolve));
+    }
+
+    cleanupDeleteFixture();
+    fs.rmSync(sandboxDir, { recursive: true, force: true });
+  }
+
+  async function runTests() {
     await waitForServer();
 
     await assertOk('/');
@@ -51,16 +96,6 @@ async function main() {
     await assertPortfolioWritesFailGracefullyWithoutBlobToken();
     await assertPortfolioDeleteWorks();
     await assertAdminLoginHandlesMissingProductionConfig();
-
-    settled = true;
-    console.log('Smoke test passed.');
-  } finally {
-    if (!serverExited) {
-      server.kill('SIGTERM');
-      await new Promise((resolve) => server.once('exit', resolve));
-    }
-
-    cleanupDeleteFixture();
   }
 
   async function waitForServer() {
@@ -166,10 +201,11 @@ async function assertPortfolioDeleteWorks() {
 async function assertAdminLoginHandlesMissingProductionConfig() {
   const port = 3101;
   const baseUrl = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['server.js'], {
+  const server = spawn(process.execPath, [path.join('backend', 'server.js')], {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      ...SANDBOX_ENV,
       PORT: String(port),
       NODE_ENV: 'production',
       VERCEL: '1',
@@ -231,10 +267,11 @@ async function assertAdminLoginHandlesMissingProductionConfig() {
 async function assertPortfolioWritesFailGracefullyWithoutBlobToken() {
   const port = 3102;
   const baseUrl = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['server.js'], {
+  const server = spawn(process.execPath, [path.join('backend', 'server.js')], {
     cwd: process.cwd(),
     env: {
       ...process.env,
+      ...SANDBOX_ENV,
       PORT: String(port),
       NODE_ENV: 'production',
       VERCEL: '1',
@@ -418,11 +455,11 @@ async function loginToAdmin({ baseUrl, username, password }) {
   };
 }
 
-function createDeleteFixture() {
-  const metadataPath = path.join(process.cwd(), 'images', 'metadata.json');
+function createDeleteFixture(imagesDir) {
+  const metadataPath = path.join(imagesDir, 'metadata.json');
   const metadataBackup = fs.readFileSync(metadataPath, 'utf8');
-  const imagePath = path.join(process.cwd(), 'images', `smoke-delete-${Date.now()}.jpg`);
-  const sourceImagePath = path.join(process.cwd(), 'images', 'photo1.jpg');
+  const imagePath = path.join(imagesDir, `smoke-delete-${Date.now()}.jpg`);
+  const sourceImagePath = path.join(imagesDir, 'photo1.jpg');
   const id = `asset-smoke-delete-${Date.now()}`;
   const flexibleImageId = `asset-smoke-flex-${Date.now()}`;
   const flexibleImageUrl = '/images/photo1.jpg?variant=portfolio#hero';
@@ -433,7 +470,7 @@ function createDeleteFixture() {
   const metadata = JSON.parse(metadataBackup);
 
   fs.copyFileSync(sourceImagePath, imagePath);
-  fs.copyFileSync(sourceImagePath, path.join(process.cwd(), 'images', blobProxyFilename));
+  fs.copyFileSync(sourceImagePath, path.join(imagesDir, blobProxyFilename));
   metadata.push({
     id,
     filename: path.basename(imagePath),
@@ -484,7 +521,7 @@ function createDeleteFixture() {
     if (fs.existsSync(imagePath)) {
       fs.unlinkSync(imagePath);
     }
-    const blobProxyPath = path.join(process.cwd(), 'images', blobProxyFilename);
+    const blobProxyPath = path.join(imagesDir, blobProxyFilename);
     if (fs.existsSync(blobProxyPath)) {
       fs.unlinkSync(blobProxyPath);
     }

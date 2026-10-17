@@ -1,3 +1,4 @@
+/* Full-size image viewer, shared by the home page and /gallery. */
 .viewer-open {
   overflow: hidden;
 }
@@ -13,145 +14,114 @@
   display: grid;
   place-items: center;
   padding: 24px;
+  font-family: 'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .public-viewer-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(8, 7, 6, 0.88);
-  backdrop-filter: blur(10px);
+  background: #171411;
 }
 
 .public-viewer-dialog {
   position: relative;
-  width: min(1180px, 100%);
-  max-height: min(90vh, 920px);
+  width: min(1280px, 100%);
+  height: min(92vh, 960px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  background: linear-gradient(180deg, rgba(23,20,18,0.98), rgba(13,11,10,0.98));
-  border: 1px solid rgba(210,177,95,0.18);
-  border-radius: 30px;
-  overflow: hidden;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 16px;
 }
 
 .public-viewer-figure {
   margin: 0;
   min-height: 0;
-  background:
-    radial-gradient(circle at top, rgba(210,177,95,0.12), transparent 28%),
-    #0c0a09;
+  display: grid;
+  place-items: center;
 }
 
 .public-viewer-image {
-  width: 100%;
-  height: 100%;
-  max-height: 90vh;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
   display: block;
 }
 
 .public-viewer-sidebar {
-  padding: 32px 28px 28px;
-  border-left: 1px solid rgba(210,177,95,0.12);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(239, 233, 223, 0.16);
+  color: #efe9df;
+}
+
+.public-viewer-sidebar > div {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-width: 0;
 }
 
 .public-viewer-kicker {
-  margin: 0 0 12px;
-  color: #d2b15f;
-  letter-spacing: 0.22em;
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  font-size: 0.68rem;
+  color: #a99f93;
 }
 
 .public-viewer-title {
-  margin: 0 0 12px;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2rem, 3.5vw, 3rem);
+  margin: 0;
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: 1.25rem;
   font-weight: 400;
-  line-height: 0.96;
-  color: #f4eee4;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.public-viewer-copy {
-  margin: 0;
-  color: rgba(244,238,228,0.72);
-  line-height: 1.75;
-  font-size: 0.84rem;
+.public-viewer-copy:empty {
+  display: none;
 }
 
 .public-viewer-close {
-  align-self: flex-start;
-  border: 1px solid rgba(210,177,95,0.28);
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 1px solid rgba(239, 233, 223, 0.4);
+  border-radius: 0;
   background: transparent;
-  color: #f4eee4;
-  border-radius: 999px;
-  padding: 12px 16px;
+  color: #efe9df;
   font: inherit;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
+  transition: background 0.2s, color 0.2s;
 }
 
 .public-viewer-close:hover,
 .public-viewer-close:focus-visible {
-  background: rgba(210,177,95,0.14);
-  border-color: #d2b15f;
-}
-
-@media (max-width: 900px) {
-  .public-viewer {
-    padding: 16px;
-  }
-
-  .public-viewer-dialog {
-    grid-template-columns: 1fr;
-    max-height: 92vh;
-  }
-
-  .public-viewer-figure {
-    min-height: 320px;
-  }
-
-  .public-viewer-sidebar {
-    border-left: none;
-    border-top: 1px solid rgba(210,177,95,0.12);
-    padding: 22px 20px 20px;
-  }
+  background: #efe9df;
+  color: #171411;
 }
 
 @media (max-width: 640px) {
   .public-viewer {
-    padding: 10px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
   }
 
   .public-viewer-dialog {
-    border-radius: 22px;
+    height: 100%;
   }
 
-  .public-viewer-figure {
-    min-height: 220px;
-  }
-
-  .public-viewer-sidebar {
-    padding: 18px 16px 16px;
-    gap: 16px;
-  }
-
-  .public-viewer-title {
-    font-size: clamp(1.6rem, 7vw, 2.2rem);
-  }
-
-  .public-viewer-copy {
-    font-size: 0.78rem;
-    line-height: 1.65;
-  }
-
-  .public-viewer-close {
-    width: 100%;
+  .public-viewer-sidebar > div {
+    flex-direction: column;
+    gap: 2px;
   }
 }

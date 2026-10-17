@@ -114,15 +114,13 @@ const defaultContent = {
   portfolio: []
 };
 
-const portfolioCategoryOrder = ['All', 'Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
+const portfolioCategoryOrder = ['Wedding', 'Portrait', 'Event', 'Brand', 'Other'];
 const portfolioLayoutClasses = [
   'portfolio-strip--empty',
   'portfolio-strip--single',
   'portfolio-strip--duo',
-  'portfolio-strip--trio',
   'portfolio-strip--grid'
 ];
-const heroMosaicRotationDelay = 3200;
 const portfolioAllCategory = 'All';
 const fallbackPortfolioCategory = 'Other';
 const bookingFieldIds = ['f-name', 'f-email', 'f-service', 'f-date', 'f-message'];
@@ -135,8 +133,6 @@ const heroCategoryPriority = new Map([
   ['Event', 5],
   ['Other', 6]
 ]);
-
-let heroMosaicRotationTimer;
 
 document.addEventListener('DOMContentLoaded', () => {
   initializePage();
@@ -178,7 +174,7 @@ function renderPage(content) {
   const safeTeamMembers = normalizeTeamMembers(content.team);
 
   renderSettings(content.settings);
-  renderHeroMosaic(safePortfolio);
+  renderHero(safePortfolio);
   renderServices(content.services || []);
   renderPortfolio(safePortfolio);
   renderAbout(content.settings);
@@ -188,7 +184,8 @@ function renderPage(content) {
 }
 
 function renderSettings(settings) {
-  setText('hero-tag', settings.heroTag);
+  // Older content stores labels with a leading dash ("— Studio"); the new design doesn't use it.
+  setText('hero-tag', stripLeadingDash(settings.heroTag));
   setText('hero-title-prefix', settings.heroTitlePrefix);
   setText('hero-title-emphasis', settings.heroTitleEmphasis);
   setText('hero-title-suffix', settings.heroTitleSuffix);
@@ -203,11 +200,13 @@ function renderSettings(settings) {
   setText('booking-title-suffix', settings.bookingTitleSuffix);
   setText('booking-subtitle', settings.bookingSubtitle);
   setText('footer-tagline', settings.footerTagline);
+  setText('footer-year', String(new Date().getFullYear()));
 
   setLink('footer-instagram', settings.instagramUrl, 'Instagram');
   setLink('footer-pinterest', settings.pinterestUrl, 'Pinterest');
   setLink('footer-linkedin', settings.linkedinUrl, 'LinkedIn');
   setLink('footer-email', `mailto:${settings.contactEmail}`, settings.contactEmail);
+  setLink('booking-email', `mailto:${settings.contactEmail}`, settings.contactEmail);
 }
 
 function renderServices(services) {
@@ -219,15 +218,32 @@ function renderServices(services) {
   container.replaceChildren();
 
   services.forEach((service, index) => {
-    const card = createElement('div', 'service-card reveal');
-    card.append(createElement('span', 'service-num', String(index + 1).padStart(2, '0')));
-    card.append(createElement('div', 'service-icon'));
-    card.append(createElement('h3', 'service-name', service.name));
-    card.append(createElement('p', 'service-desc', service.description));
-    container.append(card);
+    const item = createElement('li', 'service-item reveal');
+    item.append(createElement('span', 'service-num', String(index + 1).padStart(2, '0')));
+    item.append(createElement('h3', 'service-name', service.name));
+    item.append(createElement('p', 'service-desc', service.description));
+    container.append(item);
   });
 
+  renderServiceOptions(services);
   refreshRevealObserver();
+}
+
+function renderServiceOptions(services) {
+  const select = document.getElementById('f-service');
+  if (!select) {
+    return;
+  }
+
+  const placeholder = createElement('option', '', 'Select one');
+  placeholder.value = '';
+  select.replaceChildren(placeholder);
+
+  [...services.map((service) => service.name).filter(Boolean), 'Something else'].forEach((name) => {
+    const option = createElement('option', '', name);
+    option.value = name;
+    select.append(option);
+  });
 }
 
 function renderPortfolio(portfolio) {
@@ -248,6 +264,9 @@ function renderPortfolio(portfolio) {
   const counts = countPortfolioItemsByCategory(portfolio);
   const availableCategories = getAvailablePortfolioCategories(counts);
   let activeCategory = portfolioAllCategory;
+
+  // A filter bar with a single choice is noise, so only show it when there is something to filter.
+  filters.hidden = availableCategories.length <= 2;
 
   availableCategories.forEach((category) => {
     filters.append(
@@ -286,20 +305,9 @@ function renderPortfolio(portfolio) {
       container.append(createPortfolioCard(item));
     });
 
-    if (!visibleItems.length) {
-      container.append(
-        createElement(
-          'p',
-          'portfolio-empty',
-          `No ${activeCategory.toLowerCase()} images are available yet.`
-        )
-      );
-    }
-
     updatePortfolioFeedback({
       activeCategory,
       visibleCount: visibleItems.length,
-      totalCount: portfolio.length,
       status,
       galleryLink
     });
@@ -321,14 +329,13 @@ function getPortfolioElements() {
   return { container, filters, status, galleryLink };
 }
 
-function renderEmptyPortfolioState({ container, status, galleryLink }) {
+function renderEmptyPortfolioState({ container, filters, status, galleryLink }) {
   setPortfolioLayout(container, 0);
-  container.append(
-    createElement('p', 'portfolio-empty', 'Portfolio images will appear here once work is uploaded.')
-  );
+  filters.hidden = true;
+  container.append(createElement('p', 'portfolio-empty', 'New work is being added. Check back soon.'));
   status.textContent = '';
   galleryLink.href = '/gallery';
-  galleryLink.textContent = 'View All Work';
+  galleryLink.textContent = 'View all work';
 }
 
 function countPortfolioItemsByCategory(portfolio) {
@@ -341,7 +348,8 @@ function countPortfolioItemsByCategory(portfolio) {
 
 function getAvailablePortfolioCategories(categoryCounts) {
   return [
-    ...portfolioCategoryOrder,
+    portfolioAllCategory,
+    ...portfolioCategoryOrder.filter((category) => categoryCounts.has(category)),
     ...[...categoryCounts.keys()].filter((category) => !portfolioCategoryOrder.includes(category))
   ];
 }
@@ -354,7 +362,7 @@ function createPortfolioFilterButton({ category, portfolio, counts, activeCatego
 
   const label = createElement('span', 'portfolio-filter-label', category);
   const count = createElement(
-    'span',
+    'sup',
     'portfolio-filter-count',
     String(category === portfolioAllCategory ? portfolio.length : counts.get(category) || 0)
   );
@@ -373,25 +381,28 @@ function getPortfolioItemsForCategory(portfolio, category) {
 }
 
 function createPortfolioCard(item) {
-  const card = createElement('article', 'portfolio-item reveal');
+  const card = createElement('figure', 'portfolio-item reveal');
   const media = createElement('div', 'portfolio-media');
-  applyViewerData(media, item, `View ${item.title || 'portfolio image'} in full size`);
+  applyViewerData(media, item, `Open ${getDisplayTitle(item)} full size`);
   media.setAttribute('role', 'button');
   media.setAttribute('tabindex', '0');
 
   const image = document.createElement('img');
   image.className = 'pimg';
   image.src = getPrimaryImageUrl(item);
-  image.alt = item.title ? `${item.title} — ${item.category || 'Portfolio image'}` : 'Portfolio image';
+  image.alt = item.title ? `${item.title}, ${item.category} photography` : `${item.category} photography`;
   image.loading = 'lazy';
   image.decoding = 'async';
   applyImageFallback(image, item);
+  media.append(image);
 
-  const overlay = createElement('div', 'portfolio-overlay');
-  overlay.append(createViewerButton(item, 'portfolio-view-button'));
+  const caption = createElement('figcaption', 'portfolio-caption');
+  caption.append(createElement('span', 'portfolio-caption-category', item.category));
+  if (item.title) {
+    caption.append(createElement('span', 'portfolio-caption-title', item.title));
+  }
 
-  media.append(image, overlay);
-  card.append(media);
+  card.append(media, caption);
   return card;
 }
 
@@ -400,137 +411,47 @@ function setPortfolioLayout(container, itemCount) {
 
   if (itemCount <= 0) {
     container.classList.add('portfolio-strip--empty');
-    return;
-  }
-
-  if (itemCount === 1) {
+  } else if (itemCount === 1) {
     container.classList.add('portfolio-strip--single');
-    return;
-  }
-
-  if (itemCount === 2) {
+  } else if (itemCount === 2) {
     container.classList.add('portfolio-strip--duo');
-    return;
+  } else {
+    container.classList.add('portfolio-strip--grid');
   }
-
-  if (itemCount === 3) {
-    container.classList.add('portfolio-strip--trio');
-    return;
-  }
-
-  container.classList.add('portfolio-strip--grid');
 }
 
-function updatePortfolioFeedback({ activeCategory, visibleCount, totalCount, status, galleryLink }) {
+function updatePortfolioFeedback({ activeCategory, visibleCount, status, galleryLink }) {
+  const noun = visibleCount === 1 ? 'image' : 'images';
+
   if (activeCategory === portfolioAllCategory) {
-    status.textContent =
-      `Showing all ${totalCount} uploaded photographs. Choose a category like Wedding to focus the gallery.`;
+    status.textContent = `${visibleCount} ${noun}`;
     galleryLink.href = '/gallery';
-    galleryLink.textContent = 'View All Work';
+    galleryLink.textContent = 'View all work';
     return;
   }
 
-  status.textContent = `Showing all ${visibleCount} ${activeCategory.toLowerCase()} images.`;
+  status.textContent = `${visibleCount} ${activeCategory.toLowerCase()} ${noun}`;
   galleryLink.href = `/gallery?category=${encodeURIComponent(activeCategory)}`;
-  galleryLink.textContent = `View ${activeCategory} Gallery`;
+  galleryLink.textContent = `View ${activeCategory.toLowerCase()} gallery`;
 }
 
-function renderHeroMosaic(portfolio) {
-  const cells = [...document.querySelectorAll('.mosaic-cell')];
-  const stageMedia = document.getElementById('hero-stage-media');
-  if (!cells.length) {
-    return;
-  }
-
-  window.clearInterval(heroMosaicRotationTimer);
-
-  const prioritizedPortfolio = getHeroPriorityPortfolio(portfolio);
-  const featuredItem = prioritizedPortfolio[0] || null;
-  const mosaicPortfolio =
-    prioritizedPortfolio.length > 1
-      ? [...prioritizedPortfolio.slice(1), prioritizedPortfolio[0]]
-      : prioritizedPortfolio;
-
-  renderHeroStage(stageMedia, featuredItem);
-
-  let startIndex = 0;
-  renderMosaicState(startIndex);
-
-  if (mosaicPortfolio.length > 1) {
-    heroMosaicRotationTimer = window.setInterval(() => {
-      cells.forEach((cell) => cell.classList.add('is-rotating'));
-
-      window.setTimeout(() => {
-        startIndex = (startIndex + 1) % mosaicPortfolio.length;
-        renderMosaicState(startIndex);
-
-        requestAnimationFrame(() => {
-          cells.forEach((cell) => cell.classList.remove('is-rotating'));
-        });
-      }, 220);
-    }, heroMosaicRotationDelay);
-  }
-
-  function renderMosaicState(offset) {
-    const visibleItems = getVisibleHeroMosaicItems(mosaicPortfolio, offset, cells.length);
-
-    cells.forEach((cell, index) => {
-      const item = visibleItems[index];
-      const layer = createElement('div', 'layer');
-      cell.replaceChildren();
-
-      if (item) {
-        cell.dataset.label = item.category || 'Featured Work';
-        applyViewerData(cell, item, `View ${item.title || 'featured image'} from the hero section`);
-        cell.setAttribute('role', 'button');
-        cell.setAttribute('tabindex', '0');
-
-        const image = document.createElement('img');
-        image.className = 'mosaic-photo';
-        image.src = getPrimaryImageUrl(item);
-        image.alt = item.title
-          ? `${item.title} — ${item.category || 'Featured image'}`
-          : 'Featured image';
-        image.loading = index === 0 ? 'eager' : 'lazy';
-        image.decoding = 'async';
-        applyImageFallback(image, item);
-
-        const button = createViewerButton(item, 'mosaic-view-button');
-        button.textContent = 'View';
-        button.setAttribute(
-          'aria-label',
-          `View ${item.title || 'featured image'} from the hero section`
-        );
-
-        cell.append(image, layer, button);
-        return;
-      }
-
-      resetViewerData(cell);
-      cell.removeAttribute('role');
-      cell.removeAttribute('tabindex');
-      cell.append(layer);
-      if (index === 0) {
-        cell.append(createElement('div', 'figure'));
-      }
-    });
-  }
-}
-
-function renderHeroStage(container, item) {
+function renderHero(portfolio) {
+  const container = document.getElementById('hero-stage-media');
   if (!container) {
     return;
   }
 
+  const featuredItem = getHeroPriorityPortfolio(portfolio)[0] || null;
   container.replaceChildren();
 
   const heroVideoSrc = typeof container.dataset.heroVideoSrc === 'string'
     ? container.dataset.heroVideoSrc.trim()
     : '';
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  if (heroVideoSrc) {
+  if (heroVideoSrc && !prefersReducedMotion) {
     const video = document.createElement('video');
-    video.className = 'hero-stage-video';
+    video.className = 'hero-video';
     video.src = heroVideoSrc;
     video.autoplay = true;
     video.muted = true;
@@ -544,11 +465,13 @@ function renderHeroStage(container, item) {
     video.setAttribute('loop', '');
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', 'true');
-    video.setAttribute('aria-hidden', 'true');
     video.addEventListener(
       'error',
       () => {
-        container.replaceChildren(item ? createHeroStageImage(item) : createHeroStagePlaceholder());
+        container.replaceChildren();
+        if (featuredItem) {
+          container.append(createHeroImage(featuredItem));
+        }
       },
       { once: true }
     );
@@ -557,34 +480,27 @@ function renderHeroStage(container, item) {
     return;
   }
 
-  if (!item) {
-    container.append(createHeroStagePlaceholder());
-    return;
+  if (featuredItem) {
+    container.append(createHeroImage(featuredItem));
   }
-
-  container.append(createHeroStageImage(item));
 }
 
-function createHeroStageImage(item) {
+function createHeroImage(item) {
   const image = document.createElement('img');
-  image.className = 'hero-stage-photo';
+  image.className = 'hero-photo';
   image.src = getPrimaryImageUrl(item);
-  image.alt = item.title ? `${item.title} — featured portrait` : 'Featured portrait';
+  image.alt = '';
   image.loading = 'eager';
   image.decoding = 'async';
   const fallbackImageUrl = getFallbackImageUrl(item);
-  image.addEventListener(
-    'error',
-    () => {
-      if (fallbackImageUrl && image.src !== fallbackImageUrl) {
-        image.src = fallbackImageUrl;
-        return;
-      }
+  image.addEventListener('error', () => {
+    if (fallbackImageUrl && image.src !== fallbackImageUrl) {
+      image.src = fallbackImageUrl;
+      return;
+    }
 
-      image.replaceWith(createHeroStagePlaceholder());
-    },
-    { once: false }
-  );
+    image.remove();
+  });
   return image;
 }
 
@@ -602,23 +518,15 @@ function keepHeroVideoPlaying(video) {
     }
   };
 
-  ['loadedmetadata', 'canplay', 'playing'].forEach((eventName) => {
-    video.addEventListener(eventName, attemptPlayback);
+  ['loadedmetadata', 'canplay'].forEach((eventName) => {
+    video.addEventListener(eventName, attemptPlayback, { once: true });
   });
 
-  video.addEventListener('pause', attemptPlayback);
+  video.addEventListener('playing', () => video.classList.add('is-playing'), { once: true });
   document.addEventListener('visibilitychange', attemptPlayback);
   window.addEventListener('pageshow', attemptPlayback);
 
   requestAnimationFrame(attemptPlayback);
-}
-
-function getVisibleHeroMosaicItems(portfolio, startIndex, count) {
-  if (!portfolio.length) {
-    return Array.from({ length: count }, () => null);
-  }
-
-  return Array.from({ length: count }, (_, index) => portfolio[(startIndex + index) % portfolio.length]);
 }
 
 function getHeroPriorityPortfolio(portfolio) {
@@ -632,13 +540,6 @@ function getHeroPriorityPortfolio(portfolio) {
 
     return left.title.localeCompare(right.title);
   });
-}
-
-function createHeroStagePlaceholder() {
-  const placeholder = createElement('div', 'hero-stage-placeholder');
-  placeholder.append(createElement('span', 'hero-stage-glow'));
-  placeholder.append(createElement('span', 'hero-stage-silhouette'));
-  return placeholder;
 }
 
 function renderAbout(settings) {
@@ -662,11 +563,11 @@ function renderProcess(steps) {
   container.replaceChildren();
 
   steps.forEach((step, index) => {
-    const card = createElement('div', 'process-step reveal');
-    card.append(createElement('div', 'step-num', String(index + 1).padStart(2, '0')));
-    card.append(createElement('h3', 'step-name', step.name));
-    card.append(createElement('p', 'step-desc', step.description));
-    container.append(card);
+    const item = createElement('li', 'process-step reveal');
+    item.append(createElement('span', 'step-num', String(index + 1).padStart(2, '0')));
+    item.append(createElement('h3', 'step-name', step.name));
+    item.append(createElement('p', 'step-desc', step.description));
+    container.append(item);
   });
 
   refreshRevealObserver();
@@ -688,7 +589,7 @@ function renderTeam(teamMembers) {
 
   section.hidden = false;
 
-  teamMembers.forEach((member, index) => {
+  teamMembers.forEach((member) => {
     const card = createElement('article', 'team-card reveal');
     const media = createElement('div', 'team-media');
 
@@ -696,7 +597,7 @@ function renderTeam(teamMembers) {
       const image = document.createElement('img');
       image.className = 'team-photo';
       image.src = member.imageUrl;
-      image.alt = member.name ? `${member.name} — ${member.role || 'Team member'}` : 'Team member';
+      image.alt = `${member.name}, ${member.role}`;
       image.loading = 'lazy';
       image.decoding = 'async';
       image.addEventListener('error', () => {
@@ -708,7 +609,6 @@ function renderTeam(teamMembers) {
     }
 
     const content = createElement('div', 'team-card-content');
-    content.append(createElement('span', 'team-card-index', String(index + 1).padStart(2, '0')));
     content.append(createElement('h3', 'team-name', member.name));
     content.append(createElement('p', 'team-role', member.role));
     content.append(createElement('p', 'team-bio', member.bio));
@@ -721,22 +621,27 @@ function renderTeam(teamMembers) {
 }
 
 function renderTestimonials(testimonials) {
+  const section = document.getElementById('testimonials');
   const container = document.getElementById('testimonials-grid');
-  if (!container) {
+  if (!section || !container) {
     return;
   }
 
   container.replaceChildren();
+  section.hidden = !testimonials.length;
 
   testimonials.forEach((testimonial) => {
-    const card = createElement('article', 'testimonial reveal');
-    card.append(createElement('p', 'testimonial-text', `“${testimonial.text}”`));
+    const card = createElement('figure', 'testimonial reveal');
+    const quote = createElement('blockquote', 'testimonial-text');
+    quote.append(createElement('p', '', `“${stripQuotes(testimonial.text)}”`));
 
-    const meta = createElement('div', 'testimonial-meta');
-    meta.append(createElement('div', 'testimonial-author', testimonial.author));
-    meta.append(createElement('div', 'testimonial-role', testimonial.role));
+    const meta = createElement('figcaption', 'testimonial-meta');
+    meta.append(createElement('span', 'testimonial-author', testimonial.author));
+    if (testimonial.role) {
+      meta.append(createElement('span', 'testimonial-role', testimonial.role));
+    }
 
-    card.append(meta);
+    card.append(quote, meta);
     container.append(card);
   });
 
@@ -744,15 +649,28 @@ function renderTestimonials(testimonials) {
 }
 
 function initializeBookingForm() {
+  const form = document.getElementById('booking-form');
   const submitButton = document.getElementById('form-submit');
-  if (!submitButton) {
+  const status = document.getElementById('form-status');
+  if (!form || !submitButton || !status) {
     return;
   }
 
-  submitButton.addEventListener('click', async () => {
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const fields = collectBookingFields();
+    const clientError = validateBookingFields(fields);
+    if (clientError) {
+      setFormStatus(status, clientError.message, 'error');
+      document.getElementById(clientError.fieldId)?.focus();
+      return;
+    }
+
     submitButton.disabled = true;
     const originalLabel = submitButton.textContent;
     submitButton.textContent = 'Sending…';
+    setFormStatus(status, '', '');
 
     try {
       const response = await fetch('/api/enquiries', {
@@ -760,7 +678,7 @@ function initializeBookingForm() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(collectBookingFields())
+        body: JSON.stringify(fields)
       });
 
       const payload = await readJsonResponse(response);
@@ -769,14 +687,32 @@ function initializeBookingForm() {
       }
 
       clearBookingForm();
-      submitButton.textContent = 'Enquiry Sent';
-      restoreBookingSubmitButton(submitButton, originalLabel, 1800);
+      setFormStatus(status, "Thank you. Your enquiry is with us and we'll reply shortly.", 'success');
     } catch (error) {
       console.error('Enquiry submission failed:', error);
-      submitButton.textContent = error.message;
-      restoreBookingSubmitButton(submitButton, originalLabel, 2200);
+      setFormStatus(status, error.message, 'error');
+    } finally {
+      submitButton.textContent = originalLabel;
+      submitButton.disabled = false;
     }
   });
+}
+
+function validateBookingFields(fields) {
+  if (!fields.name) {
+    return { fieldId: 'f-name', message: 'Please add your name.' };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {
+    return { fieldId: 'f-email', message: 'Please add a valid email address.' };
+  }
+
+  return null;
+}
+
+function setFormStatus(element, message, tone) {
+  element.textContent = message;
+  element.dataset.tone = tone;
 }
 
 function collectBookingFields() {
@@ -798,62 +734,61 @@ function clearBookingForm() {
   });
 }
 
-function restoreBookingSubmitButton(button, label, delay) {
-  window.setTimeout(() => {
-    button.textContent = label;
-    button.disabled = false;
-  }, delay);
-}
-
 let revealObserver;
 
 function initializeScrollEffects() {
-  const nav = document.querySelector('nav');
-  if (nav) {
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('nav-scrolled', window.scrollY > 20);
-    });
+  const header = document.getElementById('site-header');
+  const hero = document.getElementById('home');
+  if (header) {
+    const updateHeader = () => {
+      const threshold = hero ? hero.offsetHeight - header.offsetHeight : 20;
+      header.classList.toggle('is-solid', window.scrollY > threshold);
+    };
+    window.addEventListener('scroll', updateHeader, { passive: true });
+    window.addEventListener('resize', updateHeader);
+    updateHeader();
   }
 
+  document.documentElement.classList.add('js-reveal');
   refreshRevealObserver();
 }
 
 function initializeMobileNav() {
-  const nav = document.querySelector('nav');
+  const header = document.getElementById('site-header');
   const toggle = document.getElementById('nav-toggle');
   const panel = document.getElementById('site-nav-panel');
-  if (!nav || !toggle || !panel) {
+  if (!header || !toggle || !panel) {
     return;
   }
 
-  const closeNavigation = () => {
-    nav.classList.remove('nav-open');
-    document.body.classList.remove('nav-open');
-    toggle.setAttribute('aria-expanded', 'false');
+  const label = toggle.querySelector('.nav-toggle-label');
+  const setOpen = (isOpen) => {
+    header.classList.toggle('nav-open', isOpen);
+    document.body.classList.toggle('nav-open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    if (label) {
+      label.textContent = isOpen ? 'Close' : 'Menu';
+    }
   };
 
   toggle.addEventListener('click', () => {
-    const shouldOpen = !nav.classList.contains('nav-open');
-    nav.classList.toggle('nav-open', shouldOpen);
-    document.body.classList.toggle('nav-open', shouldOpen);
-    toggle.setAttribute('aria-expanded', String(shouldOpen));
+    setOpen(!header.classList.contains('nav-open'));
   });
 
-  panel.querySelectorAll('a, button.nav-cta').forEach((element) => {
-    element.addEventListener('click', () => {
-      closeNavigation();
-    });
+  panel.querySelectorAll('a').forEach((element) => {
+    element.addEventListener('click', () => setOpen(false));
   });
 
   window.addEventListener('resize', () => {
     if (window.innerWidth > 900) {
-      closeNavigation();
+      setOpen(false);
     }
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closeNavigation();
+    if (event.key === 'Escape' && header.classList.contains('nav-open')) {
+      setOpen(false);
+      toggle.focus();
     }
   });
 }
@@ -879,10 +814,10 @@ function refreshRevealObserver() {
         }
       });
     },
-    { threshold: 0.15 }
+    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
   );
 
-  document.querySelectorAll('.reveal').forEach((element) => {
+  document.querySelectorAll('.reveal:not(.visible)').forEach((element) => {
     revealObserver.observe(element);
   });
 }
@@ -896,17 +831,6 @@ function createElement(tagName, className, text) {
     element.textContent = text;
   }
   return element;
-}
-
-function createViewerButton(item, className) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = className;
-  if (!applyViewerData(button, item, `View ${item.title || 'image'} in full size`)) {
-    button.disabled = true;
-  }
-  button.textContent = 'View image';
-  return button;
 }
 
 function createTeamPhotoPlaceholder(member) {
@@ -927,8 +851,8 @@ function applyViewerData(element, item, ariaLabel) {
   element.dataset.viewerTrigger = 'true';
   element.dataset.viewerSrc = primaryImageUrl;
   element.dataset.viewerFallbackSrc = getFallbackImageUrl(item);
-  element.dataset.viewerTitle = item.title || 'Untitled Project';
-  element.dataset.viewerCategory = item.category || 'Featured Work';
+  element.dataset.viewerTitle = item.title || item.category;
+  element.dataset.viewerCategory = item.title ? item.category : 'Portfolio';
   element.setAttribute('aria-label', ariaLabel);
   return true;
 }
@@ -964,6 +888,10 @@ function getPrimaryImageUrl(item) {
 
 function getFallbackImageUrl(item) {
   return item && typeof item.fallbackImageUrl === 'string' ? item.fallbackImageUrl : '';
+}
+
+function getDisplayTitle(item) {
+  return item.title || `${item.category} photograph`;
 }
 
 function createInitials(value) {
@@ -1002,6 +930,14 @@ function setLink(id, href, label) {
   element.textContent = label;
 }
 
+function stripLeadingDash(value) {
+  return typeof value === 'string' ? value.replace(/^[\s—–-]+/, '') : value;
+}
+
+function stripQuotes(value) {
+  return String(value || '').trim().replace(/^["“”]+|["“”]+$/g, '');
+}
+
 async function readJsonResponse(response) {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -1020,11 +956,11 @@ function normalizePortfolioItems(portfolio) {
   }
 
   return portfolio
-    .map((item, index) => normalizePortfolioItem(item, index))
+    .map((item) => normalizePortfolioItem(item))
     .filter(Boolean);
 }
 
-function normalizePortfolioItem(item, index) {
+function normalizePortfolioItem(item) {
   if (!item || typeof item !== 'object') {
     return null;
   }
@@ -1035,8 +971,10 @@ function normalizePortfolioItem(item, index) {
   }
 
   const fallbackImageUrl = normalizeImageSource(item.fallbackImageUrl);
-  const title = normalizeText(item.title) || `Portfolio Image ${index + 1}`;
-  const category = normalizeText(item.category) || 'Other';
+  const rawTitle = normalizeText(item.title);
+  // Placeholder titles like "." or "-" would look broken in captions, so treat them as untitled.
+  const title = /[\p{L}\p{N}]/u.test(rawTitle) ? rawTitle : '';
+  const category = normalizeText(item.category) || fallbackPortfolioCategory;
 
   return {
     ...item,

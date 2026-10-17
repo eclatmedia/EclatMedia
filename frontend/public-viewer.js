@@ -119,7 +119,7 @@ function openViewer({
   image.alt = `${title} — enlarged view`;
   categoryNode.textContent = category;
   titleNode.textContent = title;
-  copyNode.textContent = 'A full-screen preview so clients can inspect the photograph with more clarity and presence.';
+  copyNode.textContent = '';
 
   viewer.hidden = false;
   document.body.classList.add('viewer-open');
@@ -254,7 +254,7 @@ function ensurePublicViewer() {
           <h2 class="public-viewer-title" id="public-viewer-title" data-viewer-title></h2>
           <p class="public-viewer-copy" data-viewer-copy></p>
         </div>
-        <button class="public-viewer-close" type="button" data-viewer-close>Close view</button>
+        <button class="public-viewer-close" type="button" data-viewer-close aria-label="Close image">Close</button>
       </div>
     </div>
   `;

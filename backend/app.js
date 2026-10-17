@@ -32,7 +32,9 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const ROOT_DIR = __dirname;
+const ROOT_DIR = path.join(__dirname, '..');
+const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend');
+const ADMIN_DIR = path.join(ROOT_DIR, 'admin');
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
@@ -217,7 +219,12 @@ app.use(express.json());
 app.use(authMiddleware);
 
 app.use(
-  serveStatic(ROOT_DIR, {
+  serveStatic(FRONTEND_DIR, {
+    index: false
+  })
+);
+app.use(
+  serveStatic(ADMIN_DIR, {
     index: false
   })
 );
@@ -240,7 +247,7 @@ const upload = multer({
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(ROOT_DIR, 'index.html'));
+  res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });
 
 app.get('/api/site-content', async (req, res) => {
@@ -1456,34 +1463,34 @@ function renderGalleryPage(images, selectedCategory) {
   const visibleCategories = activeCategory
     ? [activeCategory]
     : categories.filter((category) => groups[category].length);
-  const visibleImageCount = activeCategory
-    ? groups[activeCategory].length
-    : images.length;
-  const activeLabel = activeCategory || 'All categories';
   const filterLinks = [
     `
-      <a class="gallery-filter${activeCategory ? '' : ' is-active'}" href="/gallery">
-        <span>All</span>
-        <strong>${images.length}</strong>
+      <a class="portfolio-filter${activeCategory ? '' : ' is-active'}" href="/gallery"${
+        activeCategory ? '' : ' aria-current="page"'
+      }>
+        <span>All</span><sup class="portfolio-filter-count">${images.length}</sup>
       </a>
     `,
-    ...categories.map(
-      (category) => `
-        <a
-          class="gallery-filter${category === activeCategory ? ' is-active' : ''}"
-          href="/gallery?category=${encodeURIComponent(category)}"
-        >
-          <span>${escapeHtml(category)}</span>
-          <strong>${groups[category].length}</strong>
-        </a>
-      `
-    )
+    ...categories
+      .filter((category) => groups[category].length || category === activeCategory)
+      .map(
+        (category) => `
+          <a
+            class="portfolio-filter${category === activeCategory ? ' is-active' : ''}"
+            href="/gallery?category=${encodeURIComponent(category)}"${
+              category === activeCategory ? ' aria-current="page"' : ''
+            }
+          >
+            <span>${escapeHtml(category)}</span><sup class="portfolio-filter-count">${groups[category].length}</sup>
+          </a>
+        `
+      )
   ].join('');
   const emptyState = activeCategory
-    ? `<p class="empty-state">No ${escapeHtml(
+    ? `<p class="portfolio-empty gallery-empty">No ${escapeHtml(
         activeCategory.toLowerCase()
-      )} images have been uploaded yet. Choose another category or check back soon for new work.</p>`
-    : '<p class="empty-state">No portfolio work has been uploaded yet.</p>';
+      )} work has been published yet.</p>`
+    : '<p class="portfolio-empty gallery-empty">New work is being added. Check back soon.</p>';
 
   const sections = visibleCategories
     .map((category) => {
@@ -1493,59 +1500,41 @@ function renderGalleryPage(images, selectedCategory) {
       }
 
       return `
-        <section class="gallery-group">
-          <div class="gallery-group-header">
-            <p class="gallery-kicker">Portfolio</p>
-            <h2>${escapeHtml(category)}</h2>
-            <p>Large-format presentation designed so clients can open each ${escapeHtml(
-              category.toLowerCase()
-            )} image and browse the collection with ease.</p>
-          </div>
-          <div class="gallery-grid">
+        <section class="gallery-group" aria-labelledby="gallery-${escapeHtml(category.toLowerCase())}">
+          <h2 class="gallery-group-title" id="gallery-${escapeHtml(category.toLowerCase())}">
+            ${escapeHtml(category)} <span>${items.length}</span>
+          </h2>
+          <div class="portfolio-strip portfolio-strip--grid">
             ${items
-              .map(
-                (image) => `
-                  <article class="gallery-card">
+              .map((image) => {
+                const title = getDisplayableTitle(image.title);
+                return `
+                  <figure class="portfolio-item">
                     <div
-                      class="gallery-card-media"
+                      class="portfolio-media"
                       ${renderViewerDataAttributes(
                         resolveImageUrl(image),
                         resolveFallbackImageUrl(image),
-                        image.title,
-                        image.category,
-                        `View ${image.title} in full size`
+                        title || image.category,
+                        title ? image.category : 'Portfolio',
+                        `Open ${title || `${image.category} photograph`} full size`
                       )}
                       role="button"
                       tabindex="0"
                     >
-                      <img src="${escapeHtml(resolveImageUrl(image))}" ${renderImageFallbackAttributes(
+                      <img class="pimg" src="${escapeHtml(resolveImageUrl(image))}" ${renderImageFallbackAttributes(
                         image
                       )} alt="${escapeHtml(
-                        `${image.title} — ${image.category}`
+                        title ? `${title}, ${image.category} photography` : `${image.category} photography`
                       )}" loading="lazy" decoding="async">
                     </div>
-                    <div class="gallery-card-copy">
-                      <div class="gallery-card-meta">
-                        <span class="gallery-card-category">${escapeHtml(image.category)}</span>
-                        <strong>${escapeHtml(image.title)}</strong>
-                        <span>${escapeHtml(image.originalname)}</span>
-                      </div>
-                      <button
-                        class="admin-button admin-button-secondary gallery-view-button"
-                        type="button"
-                        data-viewer-trigger="true"
-                        data-viewer-src="${escapeHtml(resolveImageUrl(image))}"
-                        data-viewer-fallback-src="${escapeHtml(resolveFallbackImageUrl(image))}"
-                        data-viewer-title="${escapeHtml(image.title)}"
-                        data-viewer-category="${escapeHtml(image.category)}"
-                        aria-label="View ${escapeHtml(image.title)} in full size"
-                      >
-                        View image
-                      </button>
-                    </div>
-                  </article>
-                `
-              )
+                    <figcaption class="portfolio-caption">
+                      <span class="portfolio-caption-category">${escapeHtml(image.category)}</span>
+                      ${title ? `<span class="portfolio-caption-title">${escapeHtml(title)}</span>` : ''}
+                    </figcaption>
+                  </figure>
+                `;
+              })
               .join('')}
           </div>
         </section>
@@ -1558,26 +1547,29 @@ function renderGalleryPage(images, selectedCategory) {
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Gallery - Éclat Media</title>
-      <link rel="stylesheet" href="/admin.css">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+      <meta name="theme-color" content="#f3efe7">
+      <title>${activeCategory ? `${escapeHtml(activeCategory)} — ` : ''}Gallery — Éclat Media</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="/style.css">
       <link rel="stylesheet" href="/public-viewer.css">
     </head>
-    <body class="admin-page">
-      <main class="gallery-shell">
+    <body class="gallery-page">
+      <header class="site-header">
+        <nav class="nav-inner" aria-label="Main">
+          <a href="/" class="logo">Éclat Media</a>
+          <a class="nav-cta" href="/#booking">Enquire</a>
+        </nav>
+      </header>
+      <main>
         <header class="gallery-hero">
-          <div>
-            <p class="admin-kicker">Published work</p>
-            <h1>Gallery</h1>
-            <p>Choose a category like Wedding, Portrait, or Event to jump straight into the work your client wants to review.</p>
-            <div class="gallery-filter-bar" aria-label="Gallery categories">
-              ${filterLinks}
-            </div>
-            <p class="gallery-selection-note">Showing ${visibleImageCount} image${visibleImageCount === 1 ? '' : 's'} in <strong>${escapeHtml(activeLabel)}</strong>.</p>
-          </div>
-          <div class="panel-actions">
-            <a class="admin-button admin-button-secondary" href="/">View site</a>
-          </div>
+          <p class="section-label">Portfolio</p>
+          <h1 class="section-title">${escapeHtml(activeCategory || 'All work')}</h1>
+          <nav class="portfolio-filters" aria-label="Gallery categories">
+            ${filterLinks}
+          </nav>
         </header>
         ${sections || emptyState}
       </main>
@@ -1585,6 +1577,12 @@ function renderGalleryPage(images, selectedCategory) {
     </body>
     </html>
   `;
+}
+
+// Uploads sometimes carry placeholder titles like "." that would read as broken captions.
+function getDisplayableTitle(title) {
+  const value = typeof title === 'string' ? title.trim() : '';
+  return /[\p{L}\p{N}]/u.test(value) ? value : '';
 }
 
 function renderAdminLoginPage({ csrfToken, error, configurationError }) {

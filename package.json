@@ -1,20 +1,29 @@
 {
   "name": "eclat-media",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "private": true,
+  "description": "Éclat Media — photography studio website with a self-hosted admin dashboard for content, portfolio, and enquiry management.",
+  "main": "backend/server.js",
   "scripts": {
-    "test": "node ./scripts/smoke-test.js",
-    "start": "node server.js"
+    "start": "node backend/server.js",
+    "test": "node ./scripts/smoke-test.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "photography",
+    "portfolio",
+    "express",
+    "admin-dashboard"
+  ],
+  "author": "DAvid <echospeach@gmail.com>",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@vercel/blob": "^2.4.0",
     "express": "^5.2.1",
     "multer": "^2.1.1",
-    "node.js": "^0.0.1-security"
+    "serve-static": "^2.2.0"
   }
 }

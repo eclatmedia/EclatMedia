@@ -2,9 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const { del, get, head, put } = require('@vercel/blob');
 
-const ROOT_DIR = __dirname;
-const IMAGES_DIR = path.join(ROOT_DIR, 'images');
-const DATA_DIR = path.join(ROOT_DIR, 'data');
+const ROOT_DIR = path.join(__dirname, '..');
+// Overridable so test/CI runs can point at a disposable directory instead of mutating
+// the real portfolio data checked into images/ and data/ (see scripts/smoke-test.js).
+const IMAGES_DIR = process.env.ECLAT_IMAGES_DIR || path.join(ROOT_DIR, 'images');
+const DATA_DIR = process.env.ECLAT_DATA_DIR || path.join(ROOT_DIR, 'data');
 const LOCAL_METADATA_PATH = path.join(IMAGES_DIR, 'metadata.json');
 const LOCAL_ENQUIRIES_PATH = path.join(DATA_DIR, 'enquiries.json');
 const LOCAL_SITE_CONTENT_PATH = path.join(DATA_DIR, 'site-content.json');

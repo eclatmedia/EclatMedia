@@ -2,262 +2,256 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Éclat Media — Photography</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Alte+Haas+Grotesk:wght@400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f3efe7">
+  <meta name="description" content="Éclat Media is a photography and film studio for weddings, portraits, events and brands.">
+  <title>Éclat Media — Photography &amp; Film</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/public-viewer.css">
 </head>
 <body>
-  <!-- NAV -->
-  <nav>
-    <a href="#home" class="logo">É<span id="nav-logo-text">clat</span> Media</a>
-    <button
-      class="nav-toggle"
-      id="nav-toggle"
-      type="button"
-      aria-expanded="false"
-      aria-controls="site-nav-panel"
-      aria-label="Toggle navigation"
-    >
-      <span class="nav-toggle-bar" aria-hidden="true"></span>
-      <span class="nav-toggle-bar" aria-hidden="true"></span>
-      <span class="nav-toggle-bar" aria-hidden="true"></span>
-    </button>
-    <div class="nav-panel" id="site-nav-panel">
-      <ul class="nav-links">
-        <li><a href="#portfolio">Portfolio</a></li>
-        <li><a href="#services">Services</a></li>
-        <li><a href="#about">About</a></li>
-        <li><a href="#team">Team</a></li>
-        <li><a href="#process">Process</a></li>
-      </ul>
-      <button class="nav-cta" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">
-        Book a Session
-      </button>
-    </div>
-  </nav>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-  <!-- HERO -->
-  <section class="hero" id="home">
-    <div class="hero-bg"></div>
-    <div class="hero-mosaic">
-      <div class="mosaic-cell ph1" data-label="Portrait"><div class="layer"></div><div class="figure"></div></div>
-      <div class="mosaic-cell ph2" data-label="Wedding"><div class="layer"></div></div>
-      <div class="mosaic-cell ph3" data-label="Editorial"><div class="layer"></div></div>
-      <div class="mosaic-cell ph4" data-label="Commercial"><div class="layer"></div></div>
-    </div>
-    <div class="hero-stage" aria-hidden="true">
-      <div class="hero-camera-art">
-        <div
-          class="hero-stage-media"
-          id="hero-stage-media"
-          data-hero-video-src="https://www.image2url.com/r2/default/videos/1781627075853-7ee123f0-961d-4731-8bf8-45e5265416bf.mp4"
-        >
-          <div class="hero-stage-placeholder">
-            <span class="hero-stage-glow"></span>
-            <span class="hero-stage-silhouette"></span>
+  <!-- NAV -->
+  <header class="site-header" id="site-header">
+    <nav class="nav-inner" aria-label="Main">
+      <a href="#home" class="logo" aria-label="Éclat Media, back to top">Éclat<span id="nav-logo-text"> Media</span></a>
+      <button
+        class="nav-toggle"
+        id="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-nav-panel"
+      >
+        <span class="nav-toggle-label">Menu</span>
+        <span class="nav-toggle-icon" aria-hidden="true"><span></span><span></span></span>
+      </button>
+      <div class="nav-panel" id="site-nav-panel">
+        <ul class="nav-links">
+          <li><a href="#portfolio">Work</a></li>
+          <li><a href="#services">Services</a></li>
+          <li><a href="#about">Studio</a></li>
+          <li><a href="#process">Process</a></li>
+          <li><a href="#team">Team</a></li>
+        </ul>
+        <a class="nav-cta" href="#booking">Enquire</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero" id="home">
+      <div
+        class="hero-media"
+        id="hero-stage-media"
+        data-hero-video-src="https://www.image2url.com/r2/default/videos/1781627075853-7ee123f0-961d-4731-8bf8-45e5265416bf.mp4"
+        aria-hidden="true"
+      ></div>
+      <div class="hero-scrim" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="hero-tag" id="hero-tag">Photography &amp; Film Studio</p>
+        <h1 class="hero-title">
+          <span id="hero-title-prefix">Capturing Moments.</span>
+          <span class="hero-title-line"><em id="hero-title-emphasis">Crafting</em> <span id="hero-title-suffix">Memories.</span></span>
+        </h1>
+        <div class="hero-foot">
+          <p class="hero-subtitle" id="hero-subtitle">Wedding, portrait and brand photography with natural direction and careful light.</p>
+          <div class="hero-actions">
+            <a href="#portfolio" class="btn btn-light">See the work</a>
+            <a href="#booking" class="btn btn-outline-light">Check availability</a>
           </div>
         </div>
       </div>
-    </div>
-    <div class="hero-content">
-      <p class="hero-tag" id="hero-tag">— Visual Storytelling Studio</p>
-      <h1 class="hero-title">
-        <span id="hero-title-prefix">Capturing Moments.</span><br><em id="hero-title-emphasis">Crafting</em> <span id="hero-title-suffix">Memories.</span>
-      </h1>
-      <p class="hero-subtitle" id="hero-subtitle">Where light becomes language. We create images that transcend documentation — photographs that breathe, emote, and endure.</p>
-      <div class="hero-actions">
-        <a href="#portfolio" class="btn-primary">View Portfolio</a>
-        <a href="#booking" class="btn-ghost">Book a Session</a>
+    </section>
+
+    <!-- PORTFOLIO -->
+    <section id="portfolio" class="section portfolio">
+      <div class="section-head reveal">
+        <div>
+          <p class="section-label">Selected work</p>
+          <h2 class="section-title">Recent commissions</h2>
+        </div>
+        <a href="/gallery" class="text-link" id="portfolio-gallery-link">View all work</a>
       </div>
-    </div>
-    <div class="hero-scroll">
-      <div class="scroll-line"></div>
-      <span class="scroll-label">Scroll</span>
-    </div>
-  </section>
-
-  <div class="gold-line"></div>
-
-  <!-- SERVICES -->
-  <section class="section" id="services">
-    <p class="section-label reveal">— What We Offer</p>
-    <h2 class="section-title reveal">Specialised <em>disciplines</em>,<br>extraordinary results.</h2>
-    <div class="services-grid" id="services-grid">
-      <!-- Populated by script.js -->
-      <div class="service-card reveal"><span class="service-num">01</span><div class="service-icon"></div><h3 class="service-name">Loading…</h3><p class="service-desc"></p></div>
-    </div>
-  </section>
-
-  <!-- PORTFOLIO -->
-  <section id="portfolio" class="portfolio">
-    <div class="portfolio-header reveal">
-      <div>
-        <p class="section-label">— Selected Work</p>
-        <h2 class="section-title" style="margin-bottom:0">Recent <em>projects</em></h2>
+      <div class="portfolio-controls reveal">
+        <div class="portfolio-filters" id="portfolio-filters" role="group" aria-label="Filter by category">
+          <!-- Populated by script.js -->
+        </div>
+        <p class="portfolio-status" id="portfolio-status" aria-live="polite"></p>
       </div>
-      <a href="/gallery" class="btn-ghost" id="portfolio-gallery-link" style="color:var(--gold);opacity:1">View All Work</a>
-    </div>
-    <div class="portfolio-controls reveal">
-      <div class="portfolio-filters" id="portfolio-filters" aria-label="Portfolio categories">
+      <div class="portfolio-strip" id="portfolio-strip">
         <!-- Populated by script.js -->
       </div>
-      <p class="portfolio-status" id="portfolio-status"></p>
-    </div>
-    <div class="portfolio-strip" id="portfolio-strip">
-      <!-- Populated by script.js -->
-    </div>
-  </section>
+    </section>
 
-  <div class="gold-line"></div>
-
-  <!-- ABOUT -->
-  <section id="about" class="about">
-    <div class="about-visual">
-      <div class="about-visual-bg"></div>
-      <div class="about-visual-accent"></div>
-      <p class="about-visual-quote" id="about-quote">"Photography is not about the camera. It is about the photographer — their patience, their eye, their willingness to wait for the world to become itself."</p>
-      <div class="about-visual-stat">
-        <div class="stat-num" id="about-years">12+</div>
-        <div class="stat-label">Years of Practice</div>
-      </div>
-    </div>
-    <div class="about-content">
-      <p class="section-label reveal">— Our Story</p>
-      <h2 class="section-title reveal">Born from a <em>passion</em><br>for authentic light.</h2>
-      <div class="about-text reveal" id="about-text">
-        <p>Éclat Media was founded on a simple belief: that every subject — human or otherwise — has an inner light.</p>
-      </div>
-      <div class="about-metrics reveal">
-        <div class="metric"><div class="metric-val" id="metric-clients">340+</div><div class="metric-lbl">Clients Served</div></div>
-        <div class="metric"><div class="metric-val" id="metric-awards">28</div><div class="metric-lbl">Awards Won</div></div>
-        <div class="metric"><div class="metric-val" id="metric-countries">14</div><div class="metric-lbl">Countries Shot In</div></div>
-      </div>
-      <a href="#booking" class="btn-primary reveal">Work With Us</a>
-    </div>
-  </section>
-
-  <!-- TEAM -->
-  <section class="team section" id="team">
-    <div class="team-intro reveal">
-      <div>
-        <p class="section-label">— Our Team</p>
-        <h2 class="section-title">The people shaping each <em>frame</em>,<br>from concept to delivery.</h2>
-      </div>
-      <p class="team-copy">A calm, detail-driven team blending creative direction, production care, and premium photography to deliver a seamless client experience.</p>
-    </div>
-    <div class="team-grid" id="team-grid">
-      <!-- Populated by script.js -->
-    </div>
-  </section>
-
-  <!-- PROCESS -->
-  <section class="process" id="process">
-    <p class="section-label reveal">— How It Works</p>
-    <h2 class="section-title reveal">A seamless process,<br>from first call <em>to final print.</em></h2>
-    <div class="process-steps" id="process-steps">
-      <div class="process-step reveal">
-        <div class="step-num">01</div>
-        <h3 class="step-name">Discovery</h3>
-        <p class="step-desc">We start with a conversation about your vision, references, schedule, and the feeling you want the work to carry.</p>
-      </div>
-      <div class="process-step reveal">
-        <div class="step-num">02</div>
-        <h3 class="step-name">Planning</h3>
-        <p class="step-desc">Locations, styling notes, timelines, and shot priorities are shaped into a clear production plan.</p>
-      </div>
-      <div class="process-step reveal">
-        <div class="step-num">03</div>
-        <h3 class="step-name">Capture</h3>
-        <p class="step-desc">On the day, we direct lightly and observe carefully so the final images feel polished and alive.</p>
-      </div>
-      <div class="process-step reveal">
-        <div class="step-num">04</div>
-        <h3 class="step-name">Delivery</h3>
-        <p class="step-desc">Your gallery is edited with consistency and care, then delivered in a format ready for print and digital use.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- TESTIMONIALS -->
-  <section class="testimonials" id="testimonials">
-    <p class="section-label reveal">— Client Stories</p>
-    <h2 class="section-title reveal">Words from those<br>who <em>trusted us.</em></h2>
-    <div class="testimonials-grid" id="testimonials-grid">
-      <article class="testimonial reveal">
-        <p class="testimonial-text">“The photos felt editorial and deeply personal at the same time. Every frame looked like a memory already preserved.”</p>
-        <div class="testimonial-meta">
-          <div class="testimonial-author">Amelia Hart</div>
-          <div class="testimonial-role">Bride</div>
+    <!-- SERVICES -->
+    <section class="section services" id="services">
+      <div class="split">
+        <div class="split-aside reveal">
+          <p class="section-label">Services</p>
+          <h2 class="section-title">Photography for weddings, people and brands.</h2>
+          <a href="#booking" class="text-link">Ask about a date</a>
         </div>
-      </article>
-      <article class="testimonial reveal">
-        <p class="testimonial-text">“Éclat gave our launch campaign warmth and sophistication. The images elevated the brand instantly.”</p>
-        <div class="testimonial-meta">
-          <div class="testimonial-author">Marcus Lee</div>
-          <div class="testimonial-role">Creative Director</div>
-        </div>
-      </article>
-      <article class="testimonial reveal">
-        <p class="testimonial-text">“The entire process was calm, intentional, and beautifully organised. We felt looked after from start to finish.”</p>
-        <div class="testimonial-meta">
-          <div class="testimonial-author">Sofia Bennett</div>
-          <div class="testimonial-role">Portrait Client</div>
-        </div>
-      </article>
-    </div>
-  </section>
+        <ol class="services-list" id="services-grid">
+          <!-- Populated by script.js -->
+        </ol>
+      </div>
+    </section>
 
-  <!-- BOOKING -->
-  <section class="booking" id="booking">
-    <h2 class="booking-title reveal">
-      <span id="booking-title-prefix">Let's create something</span><br><em id="booking-title-emphasis">extraordinary</em> <span id="booking-title-suffix">together.</span>
-    </h2>
-    <p class="booking-sub reveal" id="booking-subtitle">Tell us about your project. We'll be in touch within 24 hours.</p>
-    <div class="booking-form reveal">
-      <div class="form-row">
-        <input class="form-field" id="f-name" type="text" placeholder="Your Name">
-        <input class="form-field" id="f-email" type="email" placeholder="Email Address">
+    <!-- ABOUT -->
+    <section id="about" class="section about">
+      <div class="about-grid">
+        <div class="about-content">
+          <p class="section-label reveal">The studio</p>
+          <h2 class="section-title reveal">A small studio with a documentary eye.</h2>
+          <div class="about-text reveal" id="about-text">
+            <p>Éclat Media was founded on a simple belief: that every subject has its own light.</p>
+          </div>
+          <a href="#booking" class="text-link reveal">Work with us</a>
+        </div>
+        <aside class="about-aside reveal">
+          <blockquote class="about-quote" id="about-quote">"Photography is not about the camera. It is about the photographer."</blockquote>
+          <dl class="about-metrics">
+            <div class="metric"><dt class="metric-lbl">Years working</dt><dd class="metric-val" id="about-years">12+</dd></div>
+            <div class="metric"><dt class="metric-lbl">Clients</dt><dd class="metric-val" id="metric-clients">340+</dd></div>
+            <div class="metric"><dt class="metric-lbl">Awards</dt><dd class="metric-val" id="metric-awards">28</dd></div>
+            <div class="metric"><dt class="metric-lbl">Countries</dt><dd class="metric-val" id="metric-countries">14</dd></div>
+          </dl>
+        </aside>
       </div>
-      <div class="form-row">
-        <input class="form-field" id="f-service" type="text" placeholder="Service Type">
-        <input class="form-field" id="f-date" type="text" placeholder="Preferred Date">
+    </section>
+
+    <!-- PROCESS -->
+    <section class="section process" id="process">
+      <div class="section-head reveal">
+        <div>
+          <p class="section-label">How we work</p>
+          <h2 class="section-title">From first call to final gallery.</h2>
+        </div>
       </div>
-      <textarea class="form-field" id="f-message" placeholder="Tell us about your vision…"></textarea>
-      <button class="form-submit" id="form-submit">Send Enquiry →</button>
-    </div>
-  </section>
+      <ol class="process-steps" id="process-steps">
+        <!-- Populated by script.js -->
+      </ol>
+    </section>
+
+    <!-- TEAM -->
+    <section class="section team" id="team">
+      <div class="section-head reveal">
+        <div>
+          <p class="section-label">The team</p>
+          <h2 class="section-title">The people behind the camera.</h2>
+        </div>
+        <p class="section-intro">Creative direction, photography and production under one roof, so you deal with the same people from the first call to the final gallery.</p>
+      </div>
+      <div class="team-grid" id="team-grid">
+        <!-- Populated by script.js -->
+      </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section class="section testimonials" id="testimonials">
+      <div class="section-head reveal">
+        <div>
+          <p class="section-label">Kind words</p>
+          <h2 class="section-title">What clients say.</h2>
+        </div>
+      </div>
+      <div class="testimonials-grid" id="testimonials-grid">
+        <!-- Populated by script.js -->
+      </div>
+    </section>
+
+    <!-- BOOKING -->
+    <section class="booking" id="booking">
+      <div class="booking-grid">
+        <div class="booking-intro">
+          <p class="section-label">Enquiries</p>
+          <h2 class="booking-title">
+            <span id="booking-title-prefix">Let's create something</span> <em id="booking-title-emphasis">extraordinary</em> <span id="booking-title-suffix">together.</span>
+          </h2>
+          <p class="booking-sub" id="booking-subtitle">Tell us about your project. We'll be in touch within 24 hours.</p>
+          <div class="booking-direct">
+            <span class="booking-direct-label">Prefer email?</span>
+            <a href="#" id="booking-email" class="booking-email">hello@eclatmedia.co</a>
+          </div>
+        </div>
+        <form class="booking-form" id="booking-form" novalidate>
+          <div class="form-row">
+            <label class="form-group">
+              <span class="form-label">Name</span>
+              <input class="form-field" id="f-name" name="name" type="text" autocomplete="name" required>
+            </label>
+            <label class="form-group">
+              <span class="form-label">Email</span>
+              <input class="form-field" id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required>
+            </label>
+          </div>
+          <div class="form-row">
+            <label class="form-group">
+              <span class="form-label">Type of shoot</span>
+              <select class="form-field" id="f-service" name="service">
+                <option value="">Select one</option>
+              </select>
+            </label>
+            <label class="form-group">
+              <span class="form-label">Date <span class="form-optional">(if known)</span></span>
+              <input class="form-field" id="f-date" name="date" type="text" placeholder="e.g. June 2027">
+            </label>
+          </div>
+          <label class="form-group">
+            <span class="form-label">Tell us about it</span>
+            <textarea class="form-field" id="f-message" name="message" rows="4" placeholder="Location, number of guests, the feel you're after…"></textarea>
+          </label>
+          <div class="form-foot">
+            <button class="btn btn-light form-submit" id="form-submit" type="submit">Send enquiry</button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
 
   <!-- FOOTER -->
-  <footer>
-    <div class="footer-brand">
-      <a href="#home" class="logo">É<span style="color:var(--gold);font-style:italic">clat</span> Media</a>
-      <p class="footer-tagline" id="footer-tagline">Visual storytelling for those who
-believe images should endure.
-
-London, UK — Available Worldwide</p>
+  <footer class="site-footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#home" class="logo">Éclat Media</a>
+        <p class="footer-tagline" id="footer-tagline">Visual storytelling for those who believe images should endure.</p>
+      </div>
+      <div class="footer-col">
+        <h3>Studio</h3>
+        <ul>
+          <li><a href="#portfolio">Work</a></li>
+          <li><a href="#services">Services</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="/gallery">Full gallery</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Follow</h3>
+        <ul>
+          <li><a href="#" id="footer-instagram" target="_blank" rel="noopener">Instagram</a></li>
+          <li><a href="#" id="footer-pinterest" target="_blank" rel="noopener">Pinterest</a></li>
+          <li><a href="#" id="footer-linkedin" target="_blank" rel="noopener">LinkedIn</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Contact</h3>
+        <ul>
+          <li><a href="#" id="footer-email">hello@eclatmedia.co</a></li>
+          <li><a href="#booking">Booking enquiry</a></li>
+        </ul>
+      </div>
     </div>
-    <div class="footer-col"><h4>Navigate</h4><ul>
-      <li><a href="#portfolio">Portfolio</a></li><li><a href="#services">Services</a></li>
-      <li><a href="#about">About</a></li><li><a href="#team">Team</a></li><li><a href="#process">Process</a></li>
-      <li><a href="#booking">Contact</a></li>
-    </ul></div>
-    <div class="footer-col"><h4>Services</h4><ul>
-      <li><a href="#">Wedding</a></li><li><a href="#">Portrait</a></li>
-      <li><a href="#">Commercial</a></li><li><a href="#">Fine Art</a></li><li><a href="#">Video</a></li>
-    </ul></div>
-    <div class="footer-col"><h4>Connect</h4><ul>
-      <li><a href="#" id="footer-instagram">Instagram</a></li>
-      <li><a href="#" id="footer-pinterest">Pinterest</a></li>
-      <li><a href="#" id="footer-linkedin">LinkedIn</a></li>
-      <li><a href="#" id="footer-email">hello@eclatmedia.co</a></li>
-    </ul></div>
+    <div class="footer-bottom">
+      <p>© <span id="footer-year">2026</span> Éclat Media</p>
+      <a href="#home" class="footer-top-link">Back to top ↑</a>
+    </div>
   </footer>
-  <div class="footer-bottom">
-    <p>© 2026 Éclat Media. All rights reserved.</p>
-    <p>Crafted with intention.</p>
-  </div>
 
   <script src="/public-viewer.js" defer></script>
   <script src="/script.js" defer></script>

@@ -1,1 +1,1 @@
-module.exports = require('../admin-upload');
+module.exports = require('../backend/app');
